@@ -96,7 +96,8 @@ class AsyncShardBuilder<T extends Shard<AsyncValue<D>>, D>
     BuildContext context,
     Object error,
     StackTrace? stackTrace,
-  )? onError;
+  )?
+  onError;
 
   /// Whether to show [onData] when in loading state with previous data.
   ///
@@ -126,9 +127,9 @@ class AsyncShardBuilder<T extends Shard<AsyncValue<D>>, D>
       builder: (context, asyncValue) {
         return switch (asyncValue) {
           AsyncLoading<D>(:final previousData) => _buildLoading(
-              context,
-              previousData,
-            ),
+            context,
+            previousData,
+          ),
           AsyncData<D>(:final data) => onData(context, data),
           AsyncError<D>(:final error, :final stackTrace, :final previousData) =>
             _buildError(context, error, stackTrace, previousData),
@@ -172,4 +173,3 @@ class AsyncShardBuilder<T extends Shard<AsyncValue<D>>, D>
     );
   }
 }
-

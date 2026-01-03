@@ -109,8 +109,7 @@ class ShardSelector<T extends Shard<S>, S, R> extends StatefulWidget {
   });
 
   @override
-  State<ShardSelector<T, S, R>> createState() =>
-      _ShardSelectorState<T, S, R>();
+  State<ShardSelector<T, S, R>> createState() => _ShardSelectorState<T, S, R>();
 }
 
 class _ShardSelectorState<T extends Shard<S>, S, R>

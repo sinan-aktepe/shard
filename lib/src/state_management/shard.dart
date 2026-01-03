@@ -65,7 +65,8 @@ import 'shard_observer.dart';
 /// - [ShardObserver] for global event observation
 /// - [PersistentShard] for state persistence
 /// - [DebounceMixin] and [ThrottleMixin] for rate limiting
-abstract class Shard<T> extends ChangeNotifier with DebounceMixin, ThrottleMixin {
+abstract class Shard<T> extends ChangeNotifier
+    with DebounceMixin, ThrottleMixin {
   bool _isDisposed = false;
   T _state;
 

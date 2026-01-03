@@ -8,13 +8,14 @@ import 'shard_provider.dart';
 /// from the widget tree without having to call [ShardProvider.of]
 /// directly.
 ///
-/// ## read vs watch
+/// ## Using read
 ///
-/// - [read] - Gets the shard without subscribing to changes.
-///   Use in callbacks, event handlers, and `initState`.
+/// [read] gets the shard without subscribing to changes.
+/// Use in callbacks, event handlers, and `initState`.
 ///
-/// - [watch] - Gets the shard and subscribes to changes.
-///   Use in `build` methods when you need to react to state changes.
+/// For displaying state in the UI, use [ShardBuilder] or [ShardSelector]
+/// instead, which provide better performance and more explicit control
+/// over when widgets rebuild.
 ///
 /// ## Example
 ///
@@ -22,12 +23,14 @@ import 'shard_provider.dart';
 /// class MyWidget extends StatelessWidget {
 ///   @override
 ///   Widget build(BuildContext context) {
-///     // Use watch in build methods to react to changes
-///     final shard = context.watch<CounterShard>();
-///
 ///     return Column(
 ///       children: [
-///         Text('Count: ${shard.state}'),
+///         // Use ShardBuilder to display state
+///         ShardBuilder<CounterShard, int>(
+///           builder: (context, count) {
+///             return Text('Count: $count');
+///           },
+///         ),
 ///         ElevatedButton(
 ///           // Use read in callbacks to avoid unnecessary rebuilds
 ///           onPressed: () => context.read<CounterShard>().increment(),
@@ -39,25 +42,29 @@ import 'shard_provider.dart';
 /// }
 /// ```
 ///
-/// ## When to Use Each
+/// ## When to Use read
 ///
 /// | Scenario | Method |
 /// |----------|--------|
-/// | Displaying state in UI | `watch` |
 /// | Calling shard methods | `read` |
 /// | In `initState` | `read` |
 /// | In button callbacks | `read` |
-/// | In `build` for derived data | `watch` |
+/// | Displaying state in UI | [ShardBuilder] or [ShardSelector] |
 ///
 /// See also:
 /// - [ShardProvider] for providing shards to the widget tree
-/// - [ShardBuilder] for more control over rebuilds
+/// - [ShardBuilder] for building widgets that react to state changes
+/// - [ShardSelector] for selecting specific parts of state
 extension ContextExtensions on BuildContext {
   /// Obtains a [Shard] without subscribing to changes.
   ///
   /// Use this method when you need to access the shard but don't
   /// want the widget to rebuild when the shard's state changes.
   /// This is typically used in callbacks and event handlers.
+  ///
+  /// For displaying state in the UI, use [ShardBuilder] or [ShardSelector]
+  /// instead, which provide better performance and more explicit control
+  /// over when widgets rebuild.
   ///
   /// ```dart
   /// ElevatedButton(
@@ -71,27 +78,5 @@ extension ContextExtensions on BuildContext {
   /// Throws an assertion error if no [ShardProvider] of type [T] is found.
   T read<T extends Shard<dynamic>>() {
     return ShardProvider.of<T>(this, listen: false);
-  }
-
-  /// Obtains a [Shard] and subscribes to changes.
-  ///
-  /// Use this method when you need to access the shard and want
-  /// the widget to rebuild when the shard's state changes.
-  /// This is typically used in `build` methods.
-  ///
-  /// ```dart
-  /// @override
-  /// Widget build(BuildContext context) {
-  ///   final shard = context.watch<CounterShard>();
-  ///   return Text('Count: ${shard.state}');
-  /// }
-  /// ```
-  ///
-  /// **Note:** Using `watch` outside of `build` methods may cause
-  /// unnecessary rebuilds or errors. Use [read] in callbacks instead.
-  ///
-  /// Throws an assertion error if no [ShardProvider] of type [T] is found.
-  T watch<T extends Shard<dynamic>>() {
-    return ShardProvider.of<T>(this, listen: true);
   }
 }

@@ -125,4 +125,3 @@ class BoolSerializer implements StateSerializer<bool> {
     return data == 'true';
   }
 }
-

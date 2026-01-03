@@ -26,4 +26,3 @@ abstract class ShardObserver {
   /// [stackTrace] is the optional stack trace associated with the error.
   void onError<T>(Shard<T> shard, Object error, StackTrace? stackTrace) {}
 }
-

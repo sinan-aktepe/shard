@@ -5,27 +5,6 @@
 /// - [AsyncData] - The operation completed successfully with data
 /// - [AsyncError] - The operation failed with an error
 ///
-/// ## Usage with Pattern Matching
-///
-/// ```dart
-/// final asyncValue = AsyncData<int>(42);
-///
-/// final widget = switch (asyncValue) {
-///   AsyncLoading() => CircularProgressIndicator(),
-///   AsyncData(:final data) => Text('Value: $data'),
-///   AsyncError(:final error) => Text('Error: $error'),
-/// };
-/// ```
-///
-/// ## Usage with when()
-///
-/// ```dart
-/// asyncValue.when(
-///   loading: () => CircularProgressIndicator(),
-///   data: (value) => Text('Value: $value'),
-///   error: (error, stackTrace) => Text('Error: $error'),
-/// );
-/// ```
 ///
 /// See also:
 /// - [FutureShard] for Future-based async state management
@@ -46,10 +25,10 @@ sealed class AsyncValue<T> {
   ///
   /// For [AsyncLoading] and [AsyncError], returns the previous data if available.
   T? get dataOrNull => switch (this) {
-        AsyncData<T>(:final data) => data,
-        AsyncLoading<T>(:final previousData) => previousData,
-        AsyncError<T>(:final previousData) => previousData,
-      };
+    AsyncData<T>(:final data) => data,
+    AsyncLoading<T>(:final previousData) => previousData,
+    AsyncError<T>(:final previousData) => previousData,
+  };
 
   /// Returns the error if this is an [AsyncError], otherwise null.
   Object? get errorOrNull =>
@@ -58,52 +37,6 @@ sealed class AsyncValue<T> {
   /// Returns the stack trace if this is an [AsyncError], otherwise null.
   StackTrace? get stackTraceOrNull =>
       this is AsyncError<T> ? (this as AsyncError<T>).stackTrace : null;
-
-  /// Pattern matching helper for handling all async states.
-  ///
-  /// ```dart
-  /// asyncValue.when(
-  ///   loading: () => CircularProgressIndicator(),
-  ///   data: (value) => Text('Value: $value'),
-  ///   error: (error, stackTrace) => Text('Error: $error'),
-  /// );
-  /// ```
-  R when<R>({
-    required R Function() loading,
-    required R Function(T data) data,
-    required R Function(Object error, StackTrace? stackTrace) error,
-  }) {
-    return switch (this) {
-      AsyncLoading<T>() => loading(),
-      AsyncData<T>(data: final d) => data(d),
-      AsyncError<T>(error: final e, stackTrace: final st) => error(e, st),
-    };
-  }
-
-  /// Pattern matching helper with optional handlers.
-  ///
-  /// Unlike [when], this allows providing only the handlers you need.
-  /// Returns [orElse] for unhandled states.
-  ///
-  /// ```dart
-  /// asyncValue.maybeWhen(
-  ///   data: (value) => Text('Value: $value'),
-  ///   orElse: () => SizedBox.shrink(),
-  /// );
-  /// ```
-  R maybeWhen<R>({
-    R Function()? loading,
-    R Function(T data)? data,
-    R Function(Object error, StackTrace? stackTrace)? error,
-    required R Function() orElse,
-  }) {
-    return switch (this) {
-      AsyncLoading<T>() => loading?.call() ?? orElse(),
-      AsyncData<T>(data: final d) => data?.call(d) ?? orElse(),
-      AsyncError<T>(error: final e, stackTrace: final st) =>
-        error?.call(e, st) ?? orElse(),
-    };
-  }
 }
 
 /// Represents a loading state for an asynchronous operation.
@@ -205,4 +138,3 @@ final class AsyncError<T> extends AsyncValue<T> {
   String toString() =>
       'AsyncError<$T>(error: $error, previousData: $previousData)';
 }
-

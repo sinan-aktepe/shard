@@ -39,7 +39,7 @@ import 'shard.dart';
 /// Call [refresh] to re-execute the [build] method:
 ///
 /// ```dart
-/// final userShard = context.shard<UserShard>();
+/// final userShard = context.read<UserShard>();
 /// userShard.refresh();
 /// ```
 ///
@@ -112,4 +112,3 @@ abstract class FutureShard<T> extends Shard<AsyncValue<T>> {
     }
   }
 }
-

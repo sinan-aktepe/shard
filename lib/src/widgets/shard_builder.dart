@@ -171,7 +171,8 @@ class _ShardBuilderState<T extends Shard<S>, S>
     final S newState = _shard!.state;
 
     // Check if we should listen (call onStateChanged)
-    final shouldListen = widget.listenWhen == null ||
+    final shouldListen =
+        widget.listenWhen == null ||
         (_previousState != null &&
             widget.listenWhen!(_previousState as S, newState));
 
@@ -181,7 +182,8 @@ class _ShardBuilderState<T extends Shard<S>, S>
     }
 
     // Check if we should rebuild
-    final shouldBuild = widget.buildWhen == null ||
+    final shouldBuild =
+        widget.buildWhen == null ||
         (_previousState != null &&
             widget.buildWhen!(_previousState as S, newState));
 

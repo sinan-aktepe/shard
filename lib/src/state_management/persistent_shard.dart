@@ -61,7 +61,8 @@ import 'package:shard/shard.dart';
 /// - [Shard] for base state management
 /// - [StateStorage] for storage interface
 /// - [StateSerializer] for serialization interface
-abstract class PersistentShard<T> extends Shard<T> with StatePersistenceMixin<T> {
+abstract class PersistentShard<T> extends Shard<T>
+    with StatePersistenceMixin<T> {
   /// The key used to identify this shard's state in storage.
   ///
   /// Must be unique across all persistent shards using the same storage.
@@ -100,14 +101,14 @@ abstract class PersistentShard<T> extends Shard<T> with StatePersistenceMixin<T>
     bool autoSave = true,
     bool autoLoad = true,
     Duration debounceDuration = const Duration(milliseconds: 500),
-  })  : _initialState = initialState,
-        _storage = storage,
-        _storageFactory = storageFactory,
-        _serializer = serializer,
-        _autoSave = autoSave,
-        _autoLoad = autoLoad,
-        _debounceDuration = debounceDuration,
-        super() {
+  }) : _initialState = initialState,
+       _storage = storage,
+       _storageFactory = storageFactory,
+       _serializer = serializer,
+       _autoSave = autoSave,
+       _autoLoad = autoLoad,
+       _debounceDuration = debounceDuration,
+       super() {
     assert(
       storage != null || storageFactory != null,
       'Either storage or storageFactory must be provided',

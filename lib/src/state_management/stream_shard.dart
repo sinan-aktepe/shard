@@ -42,7 +42,7 @@ import 'shard.dart';
 /// Call [refresh] to cancel the current subscription and re-subscribe:
 ///
 /// ```dart
-/// final messagesStream = context.shard<MessagesStream>();
+/// final messagesStream = context.read<MessagesStream>();
 /// messagesStream.refresh();
 /// ```
 ///
@@ -122,4 +122,3 @@ abstract class StreamShard<T> extends Shard<AsyncValue<T>> {
     super.dispose();
   }
 }
-

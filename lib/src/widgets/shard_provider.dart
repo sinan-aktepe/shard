@@ -7,16 +7,18 @@ class _ShardProvider<T extends Shard<dynamic>> extends InheritedWidget {
 
   const _ShardProvider({super.key, required this.shard, required super.child});
 
-  static T of<T extends Shard<dynamic>>(BuildContext context,
-      {bool listen = true}) {
+  static T of<T extends Shard<dynamic>>(
+    BuildContext context, {
+    bool listen = true,
+  }) {
     if (listen) {
-      final provider =
-          context.dependOnInheritedWidgetOfExactType<_ShardProvider<T>>();
+      final provider = context
+          .dependOnInheritedWidgetOfExactType<_ShardProvider<T>>();
       assert(provider != null, 'No ShardProvider<$T> found in context');
       return provider!.shard;
     } else {
-      final element =
-          context.getElementForInheritedWidgetOfExactType<_ShardProvider<T>>();
+      final element = context
+          .getElementForInheritedWidgetOfExactType<_ShardProvider<T>>();
       assert(element != null, 'No ShardProvider<$T> found in context');
       final provider = element!.widget as _ShardProvider<T>;
       return provider.shard;
@@ -31,7 +33,7 @@ class _ShardProvider<T extends Shard<dynamic>> extends InheritedWidget {
 ///
 /// [ShardProvider] makes a shard instance available to all widgets below
 /// it in the widget tree. Descendants can access the shard using
-/// [ShardProvider.of], [context.read], or [context.watch].
+/// [ShardProvider.of] or [context.read].
 ///
 /// ## Creating a New Shard
 ///
@@ -68,15 +70,16 @@ class _ShardProvider<T extends Shard<dynamic>> extends InheritedWidget {
 /// From descendants, access the shard using:
 ///
 /// ```dart
-/// // Read without subscribing to changes
+/// // Read without subscribing to changes (for callbacks)
 /// final shard = context.read<CounterShard>();
-///
-/// // Watch and rebuild on changes
-/// final shard = context.watch<CounterShard>();
 ///
 /// // Or using ShardProvider.of
 /// final shard = ShardProvider.of<CounterShard>(context);
 /// ```
+///
+/// For displaying state in the UI, use [ShardBuilder] or [ShardSelector]
+/// instead, which provide better performance and more explicit control
+/// over when widgets rebuild.
 ///
 /// ## Nested Providers
 ///
@@ -95,7 +98,7 @@ class _ShardProvider<T extends Shard<dynamic>> extends InheritedWidget {
 /// See also:
 /// - [ShardBuilder] for building widgets that react to state changes
 /// - [ShardSelector] for selecting specific parts of state
-/// - [ContextExtensions] for `context.read` and `context.watch`
+/// - [ContextExtensions] for `context.read`
 class ShardProvider<T extends Shard<dynamic>> extends StatefulWidget {
   /// Function to create a new shard instance.
   ///
@@ -125,7 +128,7 @@ class ShardProvider<T extends Shard<dynamic>> extends StatefulWidget {
   /// )
   /// ```
   const ShardProvider({super.key, required this.create, required this.child})
-      : value = null;
+    : value = null;
 
   /// Creates a [ShardProvider] that provides an existing shard instance.
   ///
@@ -141,9 +144,11 @@ class ShardProvider<T extends Shard<dynamic>> extends StatefulWidget {
   ///   child: MyApp(),
   /// )
   /// ```
-  const ShardProvider.value(
-      {super.key, required this.value, required this.child})
-      : create = null;
+  const ShardProvider.value({
+    super.key,
+    required this.value,
+    required this.child,
+  }) : create = null;
 
   @override
   State<ShardProvider<T>> createState() => _ShardProviderState<T>();
@@ -162,8 +167,10 @@ class ShardProvider<T extends Shard<dynamic>> extends StatefulWidget {
   /// // Get shard without listening (for callbacks)
   /// final shard = ShardProvider.of<CounterShard>(context, listen: false);
   /// ```
-  static T of<T extends Shard<dynamic>>(BuildContext context,
-      {bool listen = true}) {
+  static T of<T extends Shard<dynamic>>(
+    BuildContext context, {
+    bool listen = true,
+  }) {
     return _ShardProvider.of<T>(context, listen: listen);
   }
 }
