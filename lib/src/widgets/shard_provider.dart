@@ -1,6 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:shard/src/src.dart';
 
+/// Non-generic interface for widgets that can be nested by providing a child.
+///
+/// This enables type-safe nesting of heterogeneous `ShardProvider<T>` instances
+/// without losing their generic type parameter.
+abstract class SingleChildShardProvider {
+  /// Returns a new widget that wraps [child].
+  Widget buildWithChild(Widget child);
+}
+
 /// Internal InheritedWidget used to provide shard instances to the widget tree.
 class _ShardProvider<T extends Shard<dynamic>> extends InheritedWidget {
   final T shard;
@@ -99,7 +108,8 @@ class _ShardProvider<T extends Shard<dynamic>> extends InheritedWidget {
 /// - [ShardBuilder] for building widgets that react to state changes
 /// - [ShardSelector] for selecting specific parts of state
 /// - [ContextExtensions] for `context.read`
-class ShardProvider<T extends Shard<dynamic>> extends StatefulWidget {
+class ShardProvider<T extends Shard<dynamic>> extends StatefulWidget
+    implements SingleChildShardProvider {
   /// Function to create a new shard instance.
   ///
   /// Only used when creating a new shard (default constructor).
@@ -113,7 +123,10 @@ class ShardProvider<T extends Shard<dynamic>> extends StatefulWidget {
   final T? value;
 
   /// The widget below this widget in the tree.
-  final Widget child;
+  ///
+  /// When using [MultiShardProvider], you typically omit this and let the
+  /// parent widget supply the child via [buildWithChild].
+  final Widget? child;
 
   /// Creates a [ShardProvider] that creates a new shard instance.
   ///
@@ -127,7 +140,7 @@ class ShardProvider<T extends Shard<dynamic>> extends StatefulWidget {
   ///   child: MyApp(),
   /// )
   /// ```
-  const ShardProvider({super.key, required this.create, required this.child})
+  const ShardProvider({super.key, required this.create, this.child})
     : value = null;
 
   /// Creates a [ShardProvider] that provides an existing shard instance.
@@ -144,11 +157,8 @@ class ShardProvider<T extends Shard<dynamic>> extends StatefulWidget {
   ///   child: MyApp(),
   /// )
   /// ```
-  const ShardProvider.value({
-    super.key,
-    required this.value,
-    required this.child,
-  }) : create = null;
+  const ShardProvider.value({super.key, required this.value, this.child})
+    : create = null;
 
   @override
   State<ShardProvider<T>> createState() => _ShardProviderState<T>();
@@ -172,6 +182,17 @@ class ShardProvider<T extends Shard<dynamic>> extends StatefulWidget {
     bool listen = true,
   }) {
     return _ShardProvider.of<T>(context, listen: listen);
+  }
+
+  @override
+  Widget buildWithChild(Widget child) {
+    if (value != null) {
+      return ShardProvider<T>.value(key: key, value: value, child: child);
+    }
+    if (create != null) {
+      return ShardProvider<T>(key: key, create: create, child: child);
+    }
+    throw ArgumentError('Either create or value must be provided');
   }
 }
 
@@ -210,6 +231,13 @@ class _ShardProviderState<T extends Shard<dynamic>>
 
   @override
   Widget build(BuildContext context) {
-    return _ShardProvider<T>(shard: _shard, child: widget.child);
+    final child = widget.child;
+    assert(
+      child != null,
+      'ShardProvider<$T> requires a child. '
+      'If you are using MultiShardProvider, omit child in the provider list '
+      'and pass the child to MultiShardProvider instead.',
+    );
+    return _ShardProvider<T>(shard: _shard, child: child!);
   }
 }

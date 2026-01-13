@@ -1,6 +1,6 @@
 name: shard
 description: "A powerful, lightweight state management solution for Flutter with built-in persistence, debounce, throttle, and seamless widget integration."
-version: 0.0.2
+version: 0.1.0
 homepage: https://shard-68cbe.web.app
 issue_tracker: https://github.com/sinan-aktepe/shard/issues
 documentation: https://shard-68cbe.web.app/getting-started/quick-start
@@ -18,6 +18,7 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  flutter_lints: ^6.0.0
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

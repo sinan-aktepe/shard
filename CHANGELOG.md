@@ -1,3 +1,13 @@
+## 0.1.0
+
+* Added **MultiShardProvider** widget. Simplifies providing multiple shards to the widget tree
+* **Type-safety improvements**
+  * Removed unsafe `dynamic` casts in widget layer
+  * Improved generic type preservation throughout the widget tree
+  * Better compile-time type checking
+* **Development improvements**
+  * Added `flutter_lints` as dev dependency for better code quality
+
 ## 0.0.2
 
 * Updated package metadata and documentation links
