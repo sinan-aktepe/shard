@@ -38,11 +38,6 @@
 ///   Future<String?> load(String key) async {
 ///     return _prefs.getString(key);
 ///   }
-///
-///   @override
-///   Future<void> clear() async {
-///     await _prefs.clear();
-///   }
 /// }
 /// ```
 ///
@@ -82,12 +77,4 @@ abstract class StateStorage {
   ///
   /// Throws an exception if the load operation fails.
   Future<String?> load(String key);
-
-  /// Clears all stored data.
-  ///
-  /// This removes all key-value pairs from storage.
-  /// Use with caution as this affects all stored state.
-  ///
-  /// Throws an exception if the clear operation fails.
-  Future<void> clear();
 }

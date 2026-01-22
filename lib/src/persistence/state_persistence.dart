@@ -8,18 +8,25 @@ import 'serializer.dart';
 /// This class holds all the configuration options for persisting
 /// shard state. It is used internally by [StatePersistenceMixin].
 ///
+/// Type parameters:
+/// - [T] - The full state type of the shard
+/// - [K] - The type of data to persist (can be a subset of T)
+///
 /// See also:
 /// - [StatePersistenceMixin] for using this configuration
 /// - [PersistentShard] for a ready-to-use persistent shard
-class PersistenceConfig<T> {
+class PersistenceConfig<T, K> {
   /// The key used to identify this state in storage.
   final String key;
 
   /// The storage backend for persisting state.
   final StateStorage storage;
 
-  /// The serializer for converting state to/from strings.
-  final StateSerializer<T> serializer;
+  /// The serializer for converting persistence data to/from strings.
+  final StateSerializer<K> serializer;
+
+  /// Function to extract the data to persist from the state.
+  final K Function(T state) toPersistence;
 
   /// Whether to automatically save state on changes.
   final bool autoSave;
@@ -36,16 +43,22 @@ class PersistenceConfig<T> {
   /// Callback for handling load errors.
   final void Function(Object error, StackTrace? stackTrace)? onLoadError;
 
+  /// Callback called when load operation completes.
+  /// Receives the deserialized data of type [K], or null if storage was empty.
+  final void Function(K? data)? onLoadComplete;
+
   /// Creates a new persistence configuration.
   PersistenceConfig({
     required this.key,
     required this.storage,
     required this.serializer,
+    required this.toPersistence,
     this.autoSave = true,
     this.autoLoad = true,
     this.debounceDuration = const Duration(milliseconds: 500),
     this.onSaveError,
     this.onLoadError,
+    this.onLoadComplete,
   });
 }
 
@@ -54,12 +67,17 @@ class PersistenceConfig<T> {
 /// This mixin provides automatic saving and loading of state using
 /// a configurable storage backend and serializer.
 ///
+/// Type parameters:
+/// - [T] - The full state type of the shard
+/// - [K] - The type of data to persist (can be a subset of T)
+///
 /// ## Features
 ///
 /// - **Auto-save**: Automatically saves state when it changes (debounced)
 /// - **Auto-load**: Automatically loads state on initialization
 /// - **Manual control**: [saveState] and [loadState] for manual persistence
 /// - **Error handling**: Callbacks for handling save/load errors
+/// - **Partial persistence**: Only persist the data you need with [toPersistence]
 ///
 /// ## Usage
 ///
@@ -67,7 +85,7 @@ class PersistenceConfig<T> {
 /// subclass. For a simpler approach, consider using [PersistentShard] instead.
 ///
 /// ```dart
-/// class MyShard extends Shard<MyState> with StatePersistenceMixin<MyState> {
+/// class MyShard extends Shard<MyState> with StatePersistenceMixin<MyState, MyData> {
 ///   MyShard() : super(MyState.initial());
 ///
 ///   @override
@@ -76,7 +94,12 @@ class PersistenceConfig<T> {
 ///     enablePersistence(
 ///       key: 'my_state',
 ///       storage: myStorage,
-///       serializer: mySerializer,
+///       serializer: myDataSerializer,
+///       toPersistence: (state) => state.data,
+///       onLoadComplete: (data) => emit(state.copyWith(
+///         status: LoadStatus.loaded,
+///         data: data ?? defaultData,
+///       )),
 ///     );
 ///   }
 /// }
@@ -85,16 +108,16 @@ class PersistenceConfig<T> {
 /// ## Lifecycle
 ///
 /// 1. Call [enablePersistence] to configure and start persistence
-/// 2. State is automatically loaded if [autoLoad] is true
-/// 3. State is automatically saved on changes if [autoSave] is true
+/// 2. Data is automatically loaded if [autoLoad] is true
+/// 3. Data is automatically saved on state changes if [autoSave] is true
 /// 4. Call [disablePersistence] to stop persistence
 ///
 /// See also:
 /// - [PersistentShard] for a ready-to-use persistent shard
 /// - [StateStorage] for storage interface
 /// - [StateSerializer] for serialization interface
-mixin StatePersistenceMixin<T> on Shard<T> {
-  PersistenceConfig<T>? _persistenceConfig;
+mixin StatePersistenceMixin<T, K> on Shard<T> {
+  PersistenceConfig<T, K>? _persistenceConfig;
   bool _isPersistenceEnabled = false;
   Timer? _saveTimer;
   bool _isLoading = false;
@@ -129,12 +152,14 @@ mixin StatePersistenceMixin<T> on Shard<T> {
   ///
   /// - [key] - Unique key for this state in storage
   /// - [storage] - Storage backend to use
-  /// - [serializer] - Serializer for state conversion
+  /// - [serializer] - Serializer for persistence data conversion
+  /// - [toPersistence] - Function to extract data to persist from state
   /// - [autoSave] - Whether to auto-save on state changes (default: true)
   /// - [autoLoad] - Whether to auto-load on enable (default: true)
   /// - [debounceDuration] - Debounce duration for auto-save (default: 500ms)
   /// - [onSaveError] - Callback for save errors
   /// - [onLoadError] - Callback for load errors
+  /// - [onLoadComplete] - Callback when load completes (data is null if storage was empty)
   ///
   /// ```dart
   /// @override
@@ -143,35 +168,43 @@ mixin StatePersistenceMixin<T> on Shard<T> {
   ///   enablePersistence(
   ///     key: 'my_state',
   ///     storage: await SharedPreferencesStorage.getInstance(),
-  ///     serializer: mySerializer,
-  ///     debounceDuration: Duration(seconds: 1),
+  ///     serializer: myDataSerializer,
+  ///     toPersistence: (state) => state.items,
+  ///     onLoadComplete: (items) => emit(state.copyWith(
+  ///       status: LoadStatus.loaded,
+  ///       items: items ?? [],
+  ///     )),
   ///   );
   /// }
   /// ```
   void enablePersistence({
     required String key,
     required StateStorage storage,
-    required StateSerializer<T> serializer,
+    required StateSerializer<K> serializer,
+    required K Function(T state) toPersistence,
     bool autoSave = true,
     bool autoLoad = true,
     Duration debounceDuration = const Duration(milliseconds: 500),
     void Function(Object error, StackTrace? stackTrace)? onSaveError,
     void Function(Object error, StackTrace? stackTrace)? onLoadError,
+    void Function(K? data)? onLoadComplete,
   }) {
     // Check if disposed before enabling persistence
     if (isDisposed) {
       return;
     }
 
-    _persistenceConfig = PersistenceConfig<T>(
+    _persistenceConfig = PersistenceConfig<T, K>(
       key: key,
       storage: storage,
       serializer: serializer,
+      toPersistence: toPersistence,
       autoSave: autoSave,
       autoLoad: autoLoad,
       debounceDuration: debounceDuration,
       onSaveError: onSaveError,
       onLoadError: onLoadError,
+      onLoadComplete: onLoadComplete,
     );
     _isPersistenceEnabled = true;
 
@@ -193,17 +226,6 @@ mixin StatePersistenceMixin<T> on Shard<T> {
     _isPersistenceEnabled = false;
   }
 
-  /// Clears all data from storage.
-  ///
-  /// This removes all stored state. The in-memory state is not affected.
-  /// Use [PersistentShard.clear] to also reset the in-memory state.
-  Future<void> clearStorage() async {
-    if (!_isPersistenceEnabled || _persistenceConfig == null) {
-      return;
-    }
-    await _persistenceConfig!.storage.clear();
-  }
-
   /// Manually saves the current state to storage.
   ///
   /// This method is automatically called by auto-save, but can also
@@ -211,6 +233,8 @@ mixin StatePersistenceMixin<T> on Shard<T> {
   ///
   /// If a save is already in progress, the request is queued and
   /// will be executed after the current save completes.
+  ///
+  /// The data to save is extracted using the [toPersistence] function.
   ///
   /// ```dart
   /// await shard.saveState();
@@ -235,10 +259,11 @@ mixin StatePersistenceMixin<T> on Shard<T> {
     _isSaving = true;
     _pendingSave = false;
     final config = _persistenceConfig!;
-    final currentState = state;
 
     try {
-      final serialized = config.serializer.serialize(currentState);
+      // Extract the data to persist from state using toPersistence
+      final dataToSave = config.toPersistence(state);
+      final serialized = config.serializer.serialize(dataToSave);
       await config.storage.save(config.key, serialized);
     } catch (error, stackTrace) {
       // Call the callback if provided
@@ -257,18 +282,22 @@ mixin StatePersistenceMixin<T> on Shard<T> {
     }
   }
 
-  /// Manually loads state from storage.
+  /// Manually loads data from storage.
   ///
-  /// Returns `true` if state was successfully loaded, `false` otherwise.
+  /// Returns `true` if load operation completed successfully, `false` otherwise.
   /// This method is automatically called on initialization if [autoLoad]
   /// is true.
+  ///
+  /// When load completes, the [onLoadComplete] callback is called:
+  /// - With the deserialized data if storage had data
+  /// - With `null` if storage was empty (first launch)
+  ///
+  /// The callback is responsible for merging the loaded data into the state.
   ///
   /// ```dart
   /// final loaded = await shard.loadState();
   /// if (loaded) {
-  ///   print('State restored from storage');
-  /// } else {
-  ///   print('No saved state found');
+  ///   print('Load operation completed');
   /// }
   /// ```
   Future<bool> loadState() async {
@@ -293,11 +322,16 @@ mixin StatePersistenceMixin<T> on Shard<T> {
       }
 
       if (data != null && data.isNotEmpty) {
+        // Storage has data - deserialize and call onLoadComplete with data
         final deserialized = config.serializer.deserialize(data);
-        // Use type-safe setStateInternal method for state updates
-        // setStateInternal already has dispose check, but double-check here for safety
         if (!isDisposed) {
-          setStateInternal(deserialized);
+          config.onLoadComplete?.call(deserialized);
+          return true;
+        }
+      } else {
+        // Storage is empty - call onLoadComplete with null
+        if (!isDisposed) {
+          config.onLoadComplete?.call(null);
           return true;
         }
       }
