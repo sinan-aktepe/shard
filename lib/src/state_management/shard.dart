@@ -291,7 +291,7 @@ abstract class Shard<T> extends ChangeNotifier
     cancelAllThrottle();
 
     // Clean up persistence if StatePersistenceMixin is used
-    _disposePersistenceIfEnabled();
+    disposePersistenceIfEnabled();
 
     super.dispose();
   }
@@ -300,7 +300,8 @@ abstract class Shard<T> extends ChangeNotifier
   ///
   /// This method is overridden by [StatePersistenceMixin] when persistence
   /// is enabled to save state before disposal.
-  void _disposePersistenceIfEnabled() {
+  @protected
+  void disposePersistenceIfEnabled() {
     // Overridden by StatePersistenceMixin when persistence is enabled
   }
 }

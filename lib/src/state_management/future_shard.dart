@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../caching/cache_entry.dart';
+import '../caching/cache_service.dart';
+import '../caching/memory_cache_service.dart';
 import 'async_value.dart';
 import 'shard.dart';
 
@@ -43,15 +46,91 @@ import 'shard.dart';
 /// userShard.refresh();
 /// ```
 ///
+/// ## Caching
+///
+/// Caching is enabled by default. Customize the cache key or disable caching:
+///
+/// ```dart
+/// class UserShard extends FutureShard<User> {
+///   final String userId;
+///
+///   UserShard({required this.userId});
+///
+///   @override
+///   String get cacheKey => 'user_$userId'; // Optional: customize cache key
+///
+///   @override
+///   Future<User> build() async => api.getUser(userId);
+/// }
+/// ```
+///
+/// To disable caching, override [allowCache]:
+///
+/// ```dart
+/// @override
+/// bool get allowCache => false;
+/// ```
+///
+/// The data is cached directly as-is, without any serialization. This works for any type
+/// that can be stored in memory (or disk if using a persistent cache service).
+///
 /// See also:
 /// - [StreamShard] for Stream-based async state management
 /// - [AsyncValue] for the state representation
 /// - [AsyncShardBuilder] for building UI based on async state
+/// - [CacheService] for cache storage implementations
 abstract class FutureShard<T> extends Shard<AsyncValue<T>> {
   bool _isRefreshing = false;
+  bool _forceRefresh = false;
 
   /// Creates a [FutureShard] with an initial loading state.
   FutureShard() : super(AsyncLoading<T>());
+
+  /// Whether caching is enabled for this shard.
+  ///
+  /// When `true`, the shard will cache fetched data using [cacheService].
+  /// Override this getter to disable caching:
+  ///
+  /// ```dart
+  /// @override
+  /// bool get allowCache => false;
+  /// ```
+  ///
+  /// Defaults to `true`.
+  bool get allowCache => true;
+
+  /// The cache service to use for storing cached data.
+  ///
+  /// Override this getter to provide a custom cache service.
+  /// Defaults to [MemoryCacheService] singleton.
+  ///
+  /// ```dart
+  /// @override
+  /// CacheService get cacheService => MyCustomCacheService();
+  /// ```
+  CacheService get cacheService => MemoryCacheService();
+
+  /// The cache key used to store and retrieve cached data.
+  ///
+  /// Override this getter to provide a unique cache key.
+  /// Defaults to the runtime type name.
+  ///
+  /// ```dart
+  /// @override
+  /// String get cacheKey => 'user_$userId';
+  /// ```
+  String get cacheKey => runtimeType.toString();
+
+  /// The time-to-live duration for cached data.
+  ///
+  /// Override this getter to customize cache expiration.
+  /// Defaults to 1 hour.
+  ///
+  /// ```dart
+  /// @override
+  /// Duration get cacheTTL => Duration(hours: 2);
+  /// ```
+  Duration get cacheTTL => const Duration(hours: 1);
 
   /// Builds and returns the [Future] that produces the data.
   ///
@@ -76,14 +155,23 @@ abstract class FutureShard<T> extends Shard<AsyncValue<T>> {
   ///
   /// If a refresh is already in progress, this method does nothing.
   ///
+  /// When caching is enabled, this method invalidates the cache and
+  /// fetches fresh data.
+  ///
   /// ```dart
   /// void onRefreshPressed() {
   ///   myShard.refresh();
   /// }
   /// ```
-  void refresh() {
+  void refresh({bool invalidateCache = true}) {
     if (_isRefreshing || isDisposed) return;
     _isRefreshing = true;
+    _forceRefresh = invalidateCache;
+
+    if (invalidateCache && allowCache) {
+      cacheService.delete(cacheKey).catchError((_) {});
+    }
+
     emit(AsyncLoading<T>(previousData: state.dataOrNull));
     _fetch();
   }
@@ -99,9 +187,44 @@ abstract class FutureShard<T> extends Shard<AsyncValue<T>> {
   }
 
   Future<void> _fetch() async {
+    // Try to load from cache if enabled and not forcing refresh
+    if (allowCache && !_forceRefresh) {
+      try {
+        final cachedEntry = await cacheService.read(cacheKey);
+        if (cachedEntry != null && !cachedEntry.isExpired) {
+          try {
+            final cachedData = cachedEntry.data as T;
+            if (isDisposed) return;
+            emit(AsyncData<T>(cachedData));
+            _isRefreshing = false;
+            return;
+          } catch (e) {
+            // Type cast failed, continue to fetch fresh data
+          }
+        }
+      } catch (e) {
+        // Cache read failed, continue to fetch fresh data
+      }
+    }
+
+    // Fetch fresh data
     try {
       final result = await build();
       if (isDisposed) return;
+
+      // Save to cache if enabled
+      if (allowCache) {
+        try {
+          final entry = CacheEntry(
+            data: result,
+            expiryDate: DateTime.now().add(cacheTTL),
+          );
+          await cacheService.write(cacheKey, entry);
+        } catch (e) {
+          // Cache write failed, but don't fail the fetch
+        }
+      }
+
       emit(AsyncData<T>(result));
     } catch (e, st) {
       if (isDisposed) return;
@@ -109,6 +232,7 @@ abstract class FutureShard<T> extends Shard<AsyncValue<T>> {
       emit(AsyncError<T>(e, st, state.dataOrNull));
     } finally {
       _isRefreshing = false;
+      _forceRefresh = false;
     }
   }
 }

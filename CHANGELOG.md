@@ -1,3 +1,11 @@
+## 0.3.0
+
+* **New**: Built-in caching support for [FutureShard]
+* **New**: [CacheService] interface for cache storage backends
+* **New**: [MemoryCacheService] singleton for in-memory caching
+* **New**: [CacheEntry] class for cache entries with expiration
+* **New**: [CacheMixin] for repository-level caching with `resolve` method
+
 ## 0.2.0
 
 * **BREAKING CHANGE**: `PersistentShard<T>` is now `PersistentShard<T, K>`

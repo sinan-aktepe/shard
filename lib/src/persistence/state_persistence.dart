@@ -117,12 +117,10 @@ class PersistenceConfig<T, K> {
 /// - [StateStorage] for storage interface
 /// - [StateSerializer] for serialization interface
 mixin StatePersistenceMixin<T, K> on Shard<T> {
+  static const String _autoSaveDebounceKey = 'shard_persistence_save';
   PersistenceConfig<T, K>? _persistenceConfig;
-  bool _isPersistenceEnabled = false;
-  Timer? _saveTimer;
   bool _isLoading = false;
-  bool _pendingSave = false;
-  bool _isSaving = false;
+  Future<void> _saveQueue = Future.value();
 
   @override
   void emit(T newState) {
@@ -206,8 +204,6 @@ mixin StatePersistenceMixin<T, K> on Shard<T> {
       onLoadError: onLoadError,
       onLoadComplete: onLoadComplete,
     );
-    _isPersistenceEnabled = true;
-
     // Auto-load if enabled
     if (autoLoad) {
       // loadState() handles errors internally and calls onLoadError callback
@@ -220,10 +216,9 @@ mixin StatePersistenceMixin<T, K> on Shard<T> {
   /// After calling this method, state changes will no longer be
   /// automatically saved, and [saveState]/[loadState] will do nothing.
   void disablePersistence() {
-    _saveTimer?.cancel();
-    _saveTimer = null;
     _persistenceConfig = null;
-    _isPersistenceEnabled = false;
+    cancelDebounce(_autoSaveDebounceKey);
+    _saveQueue = Future.value();
   }
 
   /// Manually saves the current state to storage.
@@ -246,40 +241,34 @@ mixin StatePersistenceMixin<T, K> on Shard<T> {
       return;
     }
 
-    if (!_isPersistenceEnabled || _persistenceConfig == null) {
+    if (_persistenceConfig == null) {
       return;
     }
 
-    // Prevent concurrent saves - if a save is in progress, mark that we need to save again
-    if (_isSaving) {
-      _pendingSave = true;
-      return;
-    }
-
-    _isSaving = true;
-    _pendingSave = false;
-    final config = _persistenceConfig!;
-
-    try {
-      // Extract the data to persist from state using toPersistence
-      final dataToSave = config.toPersistence(state);
-      final serialized = config.serializer.serialize(dataToSave);
-      await config.storage.save(config.key, serialized);
-    } catch (error, stackTrace) {
-      // Call the callback if provided
-      if (config.onSaveError != null) {
-        config.onSaveError!(error, stackTrace);
+    _saveQueue = _saveQueue.then((_) async {
+      if (isDisposed) {
+        return;
       }
-    } finally {
-      _isSaving = false;
-      // If a save was requested while we were saving, save again now
-      // But only if not disposed
-      if (_pendingSave && !isDisposed) {
-        _pendingSave = false;
-        // Use a microtask to avoid recursion and allow the current save to fully complete
-        Future.microtask(() => saveState());
+
+      final config = _persistenceConfig;
+      if (config == null) {
+        return;
       }
-    }
+
+      try {
+        // Extract the data to persist from state using toPersistence
+        final dataToSave = config.toPersistence(state);
+        final serialized = config.serializer.serialize(dataToSave);
+        await config.storage.save(config.key, serialized);
+      } catch (error, stackTrace) {
+        // Call the callback if provided
+        if (config.onSaveError != null) {
+          config.onSaveError!(error, stackTrace);
+        }
+      }
+    });
+
+    return _saveQueue;
   }
 
   /// Manually loads data from storage.
@@ -306,7 +295,7 @@ mixin StatePersistenceMixin<T, K> on Shard<T> {
       return false;
     }
 
-    if (!_isPersistenceEnabled || _persistenceConfig == null || _isLoading) {
+    if (_persistenceConfig == null || _isLoading) {
       return false;
     }
 
@@ -321,19 +310,12 @@ mixin StatePersistenceMixin<T, K> on Shard<T> {
         return false;
       }
 
-      if (data != null && data.isNotEmpty) {
-        // Storage has data - deserialize and call onLoadComplete with data
-        final deserialized = config.serializer.deserialize(data);
-        if (!isDisposed) {
-          config.onLoadComplete?.call(deserialized);
-          return true;
-        }
-      } else {
-        // Storage is empty - call onLoadComplete with null
-        if (!isDisposed) {
-          config.onLoadComplete?.call(null);
-          return true;
-        }
+      final deserialized = data != null && data.isNotEmpty
+          ? config.serializer.deserialize(data)
+          : null;
+      if (!isDisposed) {
+        config.onLoadComplete?.call(deserialized);
+        return true;
       }
     } catch (error, stackTrace) {
       // Only call error handler if not disposed
@@ -351,47 +333,33 @@ mixin StatePersistenceMixin<T, K> on Shard<T> {
     return false;
   }
 
-  // ignore: unused_element
   void _triggerAutoSaveIfEnabled() {
     // Check if disposed before triggering auto-save
     if (isDisposed) {
       return;
     }
 
-    if (!_isPersistenceEnabled ||
-        _persistenceConfig == null ||
-        !_persistenceConfig!.autoSave) {
+    if (_persistenceConfig == null || !_persistenceConfig!.autoSave) {
       return;
     }
 
     final config = _persistenceConfig!;
 
-    // Cancel existing timer
-    _saveTimer?.cancel();
-
-    // Create new timer
-    _saveTimer = Timer(config.debounceDuration, () {
-      _saveTimer = null;
-      // Check dispose again in timer callback
+    debounce(_autoSaveDebounceKey, () {
       if (!isDisposed) {
         saveState();
       }
-    });
+    }, duration: config.debounceDuration);
   }
 
-  // ignore: unused_element
-  void _disposePersistenceIfEnabled() {
-    // Cancel the timer
-    _saveTimer?.cancel();
-    _saveTimer = null;
-
-    // Clear pending operations flags
-    _pendingSave = false;
+  @override
+  void disposePersistenceIfEnabled() {
+    cancelDebounce(_autoSaveDebounceKey);
     _isLoading = false;
+    _saveQueue = Future.value();
 
     // If persistence is enabled, save immediately to ensure data is persisted
-    // Only if not already saving (to avoid race conditions)
-    if (_isPersistenceEnabled && _persistenceConfig != null && !_isSaving) {
+    if (_persistenceConfig != null) {
       // Save asynchronously (fire and forget) to ensure data is persisted
       // Note: saveState() will check isDisposed internally, so it's safe to call
       saveState().catchError((error, stackTrace) {
