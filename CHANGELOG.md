@@ -1,3 +1,17 @@
+## 1.0.0-dev.1
+
+* **New**: [ShardLocator] for singleton registration
+  * `registerSingleton<T>(T instance)` - Register an existing instance
+  * `registerLazySingleton<T>(T Function() factory)` - Register a factory, instantiated on first [get]
+  * `get<T>()` - Resolve the registered singleton
+  * `isRegistered<T>()` - Check if a type is registered
+  * `reset()` - Clear all registrations (e.g. in test setUp)
+* **New**: `stateSerializer<T>()` factory function for JSON-based serialization
+  * Eliminates the need to create separate serializer classes
+  * Works with any object that has `toJson()` and `fromJson()` methods
+  * Supports lists, maps, and nested objects
+* **New**: [StringSerializer] for simple string state persistence
+
 ## 0.3.0
 
 * **New**: Built-in caching support for [FutureShard]

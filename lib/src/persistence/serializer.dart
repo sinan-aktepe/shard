@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 /// Abstract interface for state serialization.
 ///
 /// Implement this interface to convert state objects to and from
@@ -11,6 +13,7 @@
 /// - [IntSerializer] - For `int` state
 /// - [DoubleSerializer] - For `double` state
 /// - [BoolSerializer] - For `bool` state
+/// - [StringSerializer] - For `String` state
 /// - [stateSerializer] - Factory for JSON-based serialization
 ///
 /// ## Using stateSerializer
@@ -43,7 +46,7 @@
 /// ## Usage with PersistentShard
 ///
 /// ```dart
-/// class MyShard extends PersistentShard<MyState> {
+/// class MyShard extends PersistentShard<MyState, MyState> {
 ///   MyShard()
 ///       : super(
 ///           MyState.initial(),
@@ -56,6 +59,14 @@
 ///
 ///   @override
 ///   String get persistenceKey => 'my_state';
+///
+///   @override
+///   MyState toPersistence(MyState state) => state;
+///
+///   @override
+///   void onLoadComplete(MyState? data) {
+///     if (data != null) emit(data);
+///   }
 /// }
 /// ```
 ///
@@ -79,4 +90,97 @@ abstract class StateSerializer<T> {
   ///
   /// Throws an exception if deserialization fails.
   T deserialize(String data);
+}
+
+/// Creates a [StateSerializer] for JSON-based serialization.
+///
+/// This factory simplifies creating serializers for complex objects that have
+/// `toJson()` and `fromJson()` methods, eliminating the need to create
+/// a separate serializer class for each state type.
+///
+/// ## Basic Usage
+///
+/// For a single object with `toJson()` and `fromJson()`:
+///
+/// ```dart
+/// final userSerializer = stateSerializer<User>(
+///   fromJson: User.fromJson,
+///   toJson: (user) => user.toJson(),
+/// );
+/// ```
+///
+/// ## List of Objects
+///
+/// For a list of objects:
+///
+/// ```dart
+/// final todoListSerializer = stateSerializer<List<Todo>>(
+///   fromJson: (json) => (json as List)
+///       .map((e) => Todo.fromJson(e as Map<String, dynamic>))
+///       .toList(),
+///   toJson: (todos) => todos.map((t) => t.toJson()).toList(),
+/// );
+/// ```
+///
+/// ## Usage with PersistentShard
+///
+/// ```dart
+/// class TodoShard extends PersistentShard<TodoState, List<Todo>> {
+///   TodoShard()
+///       : super(
+///           TodoState.initial(),
+///           storageFactory: () => SharedPreferencesStorage.getInstance(),
+///           serializer: stateSerializer<List<Todo>>(
+///             fromJson: (json) => (json as List)
+///                 .map((e) => Todo.fromJson(e as Map<String, dynamic>))
+///                 .toList(),
+///             toJson: (todos) => todos.map((t) => t.toJson()).toList(),
+///           ),
+///         );
+///
+///   @override
+///   String get persistenceKey => 'todos';
+///
+///   @override
+///   List<Todo> toPersistence(TodoState state) => state.todos;
+///
+///   @override
+///   void onLoadComplete(List<Todo>? data) {
+///     emit(state.copyWith(status: TodoStatus.loaded, todos: data ?? []));
+///   }
+/// }
+/// ```
+///
+/// See also:
+/// - [StateSerializer] for the base interface
+/// - [IntSerializer], [DoubleSerializer], [BoolSerializer], [StringSerializer]
+///   for primitive type serializers
+/// - [PersistentShard] for shards with persistence
+StateSerializer<T> stateSerializer<T>({
+  required T Function(dynamic json) fromJson,
+  required dynamic Function(T state) toJson,
+}) {
+  return _JsonStateSerializer<T>(fromJson: fromJson, toJson: toJson);
+}
+
+/// Internal implementation of JSON-based state serializer.
+class _JsonStateSerializer<T> implements StateSerializer<T> {
+  final T Function(dynamic json) _fromJson;
+  final dynamic Function(T state) _toJson;
+
+  _JsonStateSerializer({
+    required T Function(dynamic json) fromJson,
+    required dynamic Function(T state) toJson,
+  })  : _fromJson = fromJson,
+        _toJson = toJson;
+
+  @override
+  String serialize(T state) {
+    return jsonEncode(_toJson(state));
+  }
+
+  @override
+  T deserialize(String data) {
+    return _fromJson(jsonDecode(data));
+  }
 }

@@ -2,7 +2,8 @@
 ///
 /// Shard provides a simple and intuitive API for managing application state
 /// with built-in support for persistence, debounce, throttle, and seamless
-/// widget integration.
+/// widget integration. Use [ShardLocator] to register and resolve singletons
+/// without a separate package.
 ///
 /// ## Getting Started
 ///
@@ -28,6 +29,9 @@
 /// - [StateStorage] - Interface for storage backends
 /// - [StateSerializer] - Interface for state serialization
 /// - [StatePersistenceMixin] - Mixin for adding persistence to shards
+///
+/// ### Service locator
+/// - [ShardLocator] - Register and resolve singletons (registerSingleton, registerLazySingleton, get, reset)
 ///
 /// ## Example
 ///

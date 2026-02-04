@@ -110,6 +110,7 @@ class DoubleSerializer implements StateSerializer<double> {
 /// See also:
 /// - [IntSerializer] for integer values
 /// - [DoubleSerializer] for double values
+/// - [StringSerializer] for string values
 /// - [stateSerializer] for complex objects
 class BoolSerializer implements StateSerializer<bool> {
   /// Creates a [BoolSerializer].
@@ -123,5 +124,48 @@ class BoolSerializer implements StateSerializer<bool> {
   @override
   bool deserialize(String data) {
     return data == 'true';
+  }
+}
+
+/// A [StateSerializer] for `String` state.
+///
+/// This serializer stores strings as-is without any transformation.
+/// Use this when your shard's state is a simple string.
+///
+/// ## Usage
+///
+/// ```dart
+/// class UsernameShard extends SimplePersistentShard<String> {
+///   UsernameShard()
+///       : super(
+///           '',
+///           storage: myStorage,
+///           serializer: StringSerializer(),
+///         );
+///
+///   @override
+///   String get persistenceKey => 'username';
+///
+///   void setUsername(String value) => emit(value);
+/// }
+/// ```
+///
+/// See also:
+/// - [IntSerializer] for integer values
+/// - [DoubleSerializer] for double values
+/// - [BoolSerializer] for boolean values
+/// - [stateSerializer] for complex objects
+class StringSerializer implements StateSerializer<String> {
+  /// Creates a [StringSerializer].
+  const StringSerializer();
+
+  @override
+  String serialize(String state) {
+    return state;
+  }
+
+  @override
+  String deserialize(String data) {
+    return data;
   }
 }
