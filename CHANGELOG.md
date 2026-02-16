@@ -1,3 +1,8 @@
+## 1.0.0
+
+* **Stable release** – Public API is now frozen for 1.x.
+* No API changes from 1.0.0-dev.1.
+
 ## 1.0.0-dev.1
 
 * **New**: [ShardLocator] for singleton registration

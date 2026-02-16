@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:shard/src/src.dart';
 
-/// Non-generic interface for widgets that can be nested by providing a child.
+/// Non-generic interface for widgets that provide a single child slot.
 ///
-/// This enables type-safe nesting of heterogeneous `ShardProvider<T>` instances
-/// without losing their generic type parameter.
+/// Used by [MultiShardProvider] to nest heterogeneous [ShardProvider] instances
+/// in a type-safe way without losing generic type parameters.
+///
+/// See also:
+/// - [MultiShardProvider] for providing multiple shards at once
 abstract class SingleChildShardProvider {
   /// Returns a new widget that wraps [child].
   Widget buildWithChild(Widget child);

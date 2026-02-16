@@ -171,8 +171,8 @@ class _JsonStateSerializer<T> implements StateSerializer<T> {
   _JsonStateSerializer({
     required T Function(dynamic json) fromJson,
     required dynamic Function(T state) toJson,
-  })  : _fromJson = fromJson,
-        _toJson = toJson;
+  }) : _fromJson = fromJson,
+       _toJson = toJson;
 
   @override
   String serialize(T state) {

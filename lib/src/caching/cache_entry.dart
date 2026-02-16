@@ -40,5 +40,6 @@ class CacheEntry {
     );
   }
 
+  /// Whether this cache entry has passed its [expiryDate].
   bool get isExpired => DateTime.now().isAfter(expiryDate);
 }
