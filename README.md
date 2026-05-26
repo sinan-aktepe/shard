@@ -1,181 +1,374 @@
-# Shard
+<p align="center">
+  <img src="https://shard-68cbe.web.app/logo.png" alt="Shard" width="96" />
+</p>
 
-A powerful, lightweight state management solution for Flutter. Built-in persistence, async support, debounce & throttle, and a service locator—all in one package, no heavy frameworks.
+<h3 align="center">Shard</h3>
 
-## Quick Start
+<p align="center">
+  A lightweight, zero-dependency state management solution for Flutter.<br/>
+  Persistence, async, caching, debounce, throttle & service locator — all in one package.
+</p>
 
-### 1. Add to `pubspec.yaml`
+---
 
-```yaml
-dependencies:
-  shard: ^1.0.0
-```
+## Documentation
 
-### 2. Create a Shard
+For full documentation, tutorials, and best practices visit the official docs:
 
-```dart
-import 'package:shard/shard.dart';
+| Section | Link |
+|---------|------|
+| Getting Started | [Introduction · Installation · Quick Start](https://shard-68cbe.web.app/en/getting-started/introduction) |
+| Essentials | [Core Concepts · Widgets · Async · Caching · Observer · Locator](https://shard-68cbe.web.app/en/essentials/core-concepts) |
+| Shard Types | [FutureShard · StreamShard · PersistentShard](https://shard-68cbe.web.app/en/all-shards/future-shard) |
+| Examples | [Todo App · Infinite Scroll · Best Practices](https://shard-68cbe.web.app/en/examples/todo-app) |
 
-class CounterShard extends Shard<int> {
-  CounterShard() : super(0);
-  
-  void increment() => emit(state + 1);
-  void decrement() => emit(state - 1);
-}
-```
+---
 
-### 3. Provide and Use
+## Table of Contents
 
-```dart
-// Wrap your app
-ShardProvider<CounterShard>(
-  create: () => CounterShard(),
-  child: MaterialApp(
-    home: CounterScreen(),
-  ),
-)
+- [Why Shard?](#why-shard)
+- [Quick Start](#quick-start)
+- [What's Included](#whats-included)
+- [Core Concepts](#core-concepts)
+- [Usage Examples](#usage-examples)
+  - [FutureShard + Caching](#futureshard--caching)
+  - [StreamShard](#streamshard)
+  - [Persistence](#persistence)
+  - [Debounce & Throttle](#debounce--throttle)
+  - [ShardSelector](#shardselector)
+  - [MultiShardProvider](#multishardprovider)
+  - [ShardLocator (DI)](#shardlocator-di)
+  - [CacheMixin (Repository-Level Caching)](#cachemixin-repository-level-caching)
+  - [ShardObserver (Global Logging)](#shardobserver-global-logging)
+- [Requirements](#requirements)
+- [License](#license)
 
-// In your widget
-ShardBuilder<CounterShard, int>(
-  builder: (context, count) => Text('Count: $count'),
-)
-
-// In callbacks
-ElevatedButton(
-  onPressed: () => context.read<CounterShard>().increment(),
-  child: Text('+'),
-)
-```
-
-**That's it!** You're ready to go.
-
-## What is Shard?
-
-Shard is a state management solution built on Flutter's `ChangeNotifier`. It provides:
-
-- **Simple API** — `emit()` to update state, `onChange()` for lifecycle hooks
-- **Type-safe** — Full Dart type safety, no code generation
-- **Persistence** — Automatic state persistence with `PersistentShard`
-- **Async support** — `FutureShard` and `StreamShard` for async operations
-- **Performance** — Built-in debounce, throttle, and response caching
-- **Widgets** — `ShardBuilder`, `ShardSelector`, `AsyncShardBuilder`
-- **Service locator** — `ShardLocator` for singletons (no GetIt needed)
+---
 
 ## Why Shard?
 
-- **Zero boilerplate** — Simple API, less code
-- **Built-in features** — Persistence, caching, debounce/throttle included
-- **Type-safe** — Full Dart type system, no code generation
-- **Lightweight** — Minimal dependencies, no heavy frameworks
-- **Testable** — Clear separation of concerns
-- **Production-ready** — Stable API (1.0.0)
+No code generation. No extra dependencies. A single package that covers everything you need:
 
-## Key Features
+- **Persistent state** — Automatically save and load state across app restarts with built-in serializers.
+- **Cache support** — TTL-based in-memory caching for async shards and repositories.
+- **Helpers** — Debounce, throttle, global observer, and `AsyncValue` for handling loading/error states gracefully.
+- **Service locator** — Register and resolve singletons effortlessly with `ShardLocator`.
 
-| Feature | Description |
-|---------|-------------|
-| **Shard** | Base state management with `emit()`, lifecycle hooks |
-| **FutureShard** | Async state from `Future` with automatic caching |
-| **StreamShard** | Async state from `Stream` for real-time data |
-| **PersistentShard** | Automatic state persistence across app restarts |
-| **ShardBuilder** | Widget that rebuilds on state changes |
-| **ShardSelector** | Optimized widget that rebuilds only when selected value changes |
-| **AsyncShardBuilder** | Widget for async states (loading/data/error) |
-| **DebounceMixin** | Delay execution until inactivity period |
-| **ThrottleMixin** | Limit execution to once per time period |
-| **ShardLocator** | Simple service locator for singletons |
+---
 
-## Examples
+## Quick Start
 
-### Async State with FutureShard
+Add Shard to your project:
+
+```yaml
+# pubspec.yaml
+dependencies:
+  shard: ^1.0.1
+```
+
+Define your state, provide it, and use it — three simple steps:
+
+```dart
+// 1. Define your state
+class CounterShard extends Shard<int> {
+  CounterShard() : super(0);
+
+  void increment() => emit(state + 1);
+  void decrement() => emit(state - 1);
+}
+
+// 2. Provide it
+class CounterApp extends StatelessWidget {
+  const CounterApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return ShardProvider<CounterShard>(
+      create: () => CounterShard(),
+      child: MaterialApp(home: CounterScreen()),
+    );
+  }
+}
+
+// 3. Use it
+class CounterScreen extends StatelessWidget {
+  const CounterScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        // Rebuild only when state changes
+        ShardBuilder<CounterShard, int>(
+          builder: (context, count) => Text('Count: $count'),
+        ),
+        ElevatedButton(
+          onPressed: () => context.read<CounterShard>().increment(),
+          child: Text('+'),
+        ),
+      ],
+    );
+  }
+}
+```
+
+---
+
+## What's Included
+
+| Area | What You Get |
+|------|--------------|
+| **State** | `Shard<T>` — `emit()`, `emitForce()`, lifecycle hooks, equality, observer |
+| **Async** | `FutureShard<T>`, `StreamShard<T>` — loading / data / error with `AsyncValue<T>` |
+| **Persistence** | `PersistentShard<T,K>`, `SimplePersistentShard<T>` — auto save / load with built-in serializers |
+| **Performance** | `DebounceMixin`, `ThrottleMixin` — rate limiting built into `Shard` |
+| **Cache** | `CacheService`, `MemoryCacheService`, `CacheMixin` — TTL-based caching for shards & repos |
+| **Widgets** | `ShardBuilder`, `ShardSelector`, `AsyncShardBuilder`, `MultiShardProvider` |
+| **DI** | `ShardLocator` — eager & lazy singletons, `isRegistered()`, `reset()` for tests |
+| **Observability** | `ShardObserver` — global `onChange` / `onError` hooks |
+
+---
+
+## Core Concepts
+
+Shard follows a straightforward data flow:
+
+```
+ShardProvider            → Injects a Shard into the widget tree
+    ↓
+ShardBuilder / Selector  → Rebuilds UI when state changes
+    ↓
+Shard.emit()             → Pushes new state, notifies listeners
+```
+
+Here's a breakdown of the key building blocks:
+
+- **`Shard<T>`** — Holds typed state. Call `emit()` (equality-checked) or `emitForce()` (always notifies).
+- **`ShardProvider`** — Provides a shard to descendants. Use `.value()` constructor for existing instances.
+- **`ShardBuilder`** — Rebuilds its child whenever the shard's state changes.
+- **`ShardSelector`** — Rebuilds only when a *selected slice* of state changes.
+- **`FutureShard<T>`** — Wraps a `Future` with automatic loading → data → error transitions and caching.
+- **`StreamShard<T>`** — Wraps a `Stream` with the same `AsyncValue` pattern.
+- **`PersistentShard<T,K>`** — Persists state to storage with full control over serialization.
+- **`context.read<T>()`** — Access a shard without subscribing (ideal for callbacks & event handlers).
+
+---
+
+## Usage Examples
+
+### FutureShard + Caching
+
+Fetch data asynchronously with built-in caching — no boilerplate required:
 
 ```dart
 class UserShard extends FutureShard<User> {
   final String userId;
-  
   UserShard({required this.userId});
-  
+
+  @override
+  String get cacheKey => 'user_$userId';
+
+  @override
+  Duration get cacheTTL => Duration(minutes: 30);
+
   @override
   Future<User> build() => api.getUser(userId);
-  
-  @override
-  bool get allowCache => true; // Enable caching
 }
 
-// In UI
-AsyncShardBuilder<UserShard, User>(
-  onLoading: (context) => CircularProgressIndicator(),
-  onData: (context, user) => Text('Hello, ${user.name}'),
-  onError: (context, error, _) => Text('Error: $error'),
-)
+class UserScreen extends StatelessWidget {
+  const UserScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return AsyncShardBuilder<UserShard, User>(
+      onLoading: (c) => CircularProgressIndicator(),
+      onData: (c, user) => Text(user.name),
+      onError: (c, e, _) => Text('$e'),
+    );
+  }
+}
+```
+
+### StreamShard
+
+Subscribe to real-time data streams with the familiar `AsyncValue` pattern:
+
+```dart
+class MessagesStream extends StreamShard<List<Message>> {
+  final String chatId;
+  MessagesStream({required this.chatId});
+
+  @override
+  Stream<List<Message>> build() => repository.watchMessages(chatId);
+}
 ```
 
 ### Persistence
 
+Keep state alive across app restarts — just pick a serializer and a storage backend:
+
 ```dart
 class CounterShard extends SimplePersistentShard<int> {
-  CounterShard() : super(
-    0,
+  CounterShard() : super(0,
     storageFactory: () => SharedPreferencesStorage.getInstance(),
     serializer: IntSerializer(),
   );
-  
+
   @override
   String get persistenceKey => 'counter';
-  
+
   void increment() => emit(state + 1);
 }
 ```
 
 ### Debounce & Throttle
 
+Rate-limit expensive operations directly inside your shard:
+
 ```dart
-class SearchShard extends Shard<SearchState> {
-  void updateQuery(String query) {
-    emit(state.copyWith(query: query));
-    
-    // Debounce search API call
-    debounce('search', () => performSearch(query), 
-      duration: Duration(milliseconds: 500));
+class SearchShard extends Shard<String> {
+  SearchShard() : super('');
+
+  void onQueryChanged(String query) {
+    emit(query);
+    debounce(
+      'search',
+      () => performSearch(query),
+      duration: Duration(milliseconds: 500),
+    );
   }
+
+  Future<void> performSearch(String query) async { /* ... */ }
 }
 
-class ScrollShard extends Shard<ScrollState> {
-  void onScroll() {
-    // Throttle load-more to once per second
-    throttle('loadMore', () => loadMore(), 
-      duration: Duration(seconds: 1));
+class FeedShard extends Shard<int> {
+  FeedShard() : super(0);
+
+  void onScrollNearEnd() {
+    throttle(
+      'loadMore',
+      () => loadMore(),
+      duration: Duration(seconds: 1),
+    );
+  }
+
+  void loadMore() => emit(state + 1);
+}
+```
+
+### ShardSelector
+
+Optimize rebuilds by selecting only the slice of state you care about:
+
+```dart
+class UserNameText extends StatelessWidget {
+  const UserNameText({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return ShardSelector<UserShard, UserState, String>(
+      selector: (s) => s.name,
+      builder: (context, name) => Text('Hello, $name'),
+    );
   }
 }
 ```
 
-### Service Locator
+### MultiShardProvider
+
+Provide multiple shards at once without deep nesting:
 
 ```dart
-void main() {
-  // Register singletons
-  ShardLocator.registerSingleton<ApiClient>(ApiClient());
-  ShardLocator.registerLazySingleton<Repository>(
-    () => Repository(ShardLocator.get<ApiClient>()),
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MultiShardProvider(
+      providers: [
+        ShardProvider<AuthShard>(create: () => AuthShard()),
+        ShardProvider<SettingsShard>(create: () => SettingsShard()),
+        ShardProvider<ThemeShard>(create: () => ThemeShard()),
+      ],
+      child: MaterialApp(home: HomeScreen()),
+    );
+  }
+}
+```
+
+### ShardLocator (DI)
+
+A simple service locator for dependency injection — supports eager and lazy singletons:
+
+```dart
+class AppBootstrap {
+  static void init() {
+    ShardLocator.registerSingleton<ApiClient>(ApiClient());
+    ShardLocator.registerLazySingleton<UserRepo>(
+      () => UserRepo(ShardLocator.get<ApiClient>()),
+    );
+  }
+}
+
+class SomeService {
+  UserRepo get repo => ShardLocator.get<UserRepo>();
+}
+```
+
+### CacheMixin (Repository-Level Caching)
+
+Add caching to your repositories with a single mixin — includes stale-while-revalidate support:
+
+```dart
+class UserRepository with CacheMixin {
+  @override
+  CacheService get cacheService => MemoryCacheService();
+
+  final UserApi _api;
+  UserRepository(this._api);
+
+  Future<User> getUser(String id) => resolve<User>(
+    key: 'user_$id',
+    fetcher: () => _api.fetchUser(id),
+    ttl: Duration(minutes: 30),
+    onErrorReturnOldCache: true,
   );
-  
+}
+```
+
+### ShardObserver (Global Logging)
+
+Track every state change and error across your entire app:
+
+```dart
+class AppObserver extends ShardObserver {
+  @override
+  void onChange(Shard shard, Object? previousState, Object? currentState) {
+    print('${shard.runtimeType}: $previousState → $currentState');
+  }
+
+  @override
+  void onError(Shard shard, Object error, StackTrace? stackTrace) {
+    print('${shard.runtimeType} error: $error');
+  }
+}
+
+void main() {
+  Shard.observer = AppObserver();
   runApp(MyApp());
 }
-
-// Use anywhere
-final repo = ShardLocator.get<Repository>();
 ```
 
-## Documentation
+---
 
-**[Full Documentation](https://shard-68cbe.web.app/getting-started/introduction)**
+## Requirements
 
-- [Installation](https://shard-68cbe.web.app/getting-started/installation)
-- [Quick Start](https://shard-68cbe.web.app/getting-started/quick-start)
-- [Core Concepts](https://shard-68cbe.web.app/essentials/core-concepts)
-- [All Shards](https://shard-68cbe.web.app/all-shards/future-shard)
-- [Examples](https://shard-68cbe.web.app/examples/todo-app)
+- Dart `^3.10.3`
+- Flutter `>=1.17.0`
+- **Zero** external dependencies
+
+---
 
 ## License
 
-See [LICENSE](LICENSE) file for details.
+MIT — see [LICENSE](LICENSE).

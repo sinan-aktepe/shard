@@ -1,3 +1,8 @@
+## 1.0.1
+
+* Updated README with improved documentation and examples
+* Added missing feature examples: `StreamShard`, `MultiShardProvider`, `CacheMixin`, `ShardObserver`
+
 ## 1.0.0
 
 * **Stable release** – Public API is now frozen for 1.x.

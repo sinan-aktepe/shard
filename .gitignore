@@ -32,3 +32,12 @@ migrate_working_dir/
 
 # Documentation
 /my-docs/
+
+# Claude Code / AI assistant files
+CLAUDE.md
+.claude/
+.cursor/
+.aider*
+.windsurfrules
+GEMINI.md
+AGENTS.md
