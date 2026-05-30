@@ -275,7 +275,7 @@ class ShardTester<T> {
   }
 }
 
-/// Internal wait record; populated by `waitForNext` / `waitFor` in later tasks.
+/// Internal wait record used by `waitForNext` and `waitFor`.
 class _PendingWait<T> {
   _PendingWait(this.completer, {this.predicate});
   final Completer<T> completer;
