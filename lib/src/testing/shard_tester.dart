@@ -281,3 +281,40 @@ class _PendingWait<T> {
   final Completer<T> completer;
   final bool Function(T)? predicate;
 }
+
+/// A thin declarative wrapper around [ShardTester].
+///
+/// Builds [S], optionally invokes [act] on it, asserts the recorded emissions
+/// match [expect] (prefix-match, like [ShardTester.expectStates]), then
+/// disposes both the tester and the shard.
+///
+/// This is a function, not a test registrar; wrap it in your framework's
+/// `test()` call:
+///
+/// ```dart
+/// test('increments by 1', () async {
+///   await shardTest<CounterShard, int>(
+///     build: () => CounterShard(),
+///     act: (s) async => s.increment(),
+///     expect: [1],
+///   );
+/// });
+/// ```
+Future<void> shardTest<S extends Shard<T>, T>({
+  required S Function() build,
+  required List<T> expect,
+  Future<void> Function(S shard)? act,
+  Duration timeout = const Duration(seconds: 1),
+}) async {
+  final shard = build();
+  final tester = ShardTester<T>(shard);
+  try {
+    if (act != null) {
+      await act(shard);
+    }
+    await tester.expectStates(expect, timeout: timeout);
+  } finally {
+    await tester.dispose();
+    shard.dispose();
+  }
+}
