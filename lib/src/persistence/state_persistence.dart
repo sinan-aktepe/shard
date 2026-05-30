@@ -356,16 +356,21 @@ mixin StatePersistenceMixin<T, K> on Shard<T> {
   void disposePersistenceIfEnabled() {
     cancelDebounce(_autoSaveDebounceKey);
     _isLoading = false;
-    _saveQueue = Future.value();
 
-    // If persistence is enabled, save immediately to ensure data is persisted
-    if (_persistenceConfig != null) {
-      // Save asynchronously (fire and forget) to ensure data is persisted
-      // Note: saveState() will check isDisposed internally, so it's safe to call
-      saveState().catchError((error, stackTrace) {
-        // Call the callback if provided (only if config still exists)
-        if (_persistenceConfig?.onSaveError != null) {
-          _persistenceConfig!.onSaveError!(error, stackTrace);
+    // If persistence is enabled, flush any pending save before teardown.
+    // We bypass the isDisposed guard here intentionally — disposal is the
+    // one moment where we must save regardless of the disposed flag.
+    final config = _persistenceConfig;
+    if (config != null) {
+      _saveQueue = _saveQueue.then((_) async {
+        try {
+          final dataToSave = config.toPersistence(state);
+          final serialized = config.serializer.serialize(dataToSave);
+          await config.storage.save(config.key, serialized);
+        } catch (error, stackTrace) {
+          if (config.onSaveError != null) {
+            config.onSaveError!(error, stackTrace);
+          }
         }
       });
     }
