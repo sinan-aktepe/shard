@@ -23,7 +23,7 @@ class ObservedChange<T> {
 /// A single observed `onError` event captured by [MockShardObserver].
 class ObservedError {
   /// Creates an [ObservedError] record.
-  const ObservedError(this.shard, this.error, this.stackTrace);
+  const ObservedError(this.shard, this.error, [this.stackTrace]);
 
   /// The shard that reported the error.
   final Shard shard;

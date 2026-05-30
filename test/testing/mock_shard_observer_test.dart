@@ -99,6 +99,21 @@ void main() {
       b.dispose();
     });
 
+    test('errorsOfType filters by shard runtime type', () {
+      final observer = MockShardObserver();
+      Shard.observer = observer;
+
+      final counter = _CounterShard();
+      final text = _StringShard()..set('seed');
+      counter.fail();
+
+      expect(observer.errorsOfType<_CounterShard>(), hasLength(1));
+      expect(observer.errorsOfType<_StringShard>(), isEmpty);
+
+      counter.dispose();
+      text.dispose();
+    });
+
     test('clear empties recorded lists', () {
       final observer = MockShardObserver();
       Shard.observer = observer;
