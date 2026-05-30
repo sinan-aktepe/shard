@@ -51,10 +51,10 @@ class FakeCacheService implements CacheService {
   /// Number of [read] calls since construction (or last [reset]).
   int readCount = 0;
 
-  /// Number of [write] calls.
+  /// Number of [write] calls since construction (or last [reset]).
   int writeCount = 0;
 
-  /// Number of [delete] calls.
+  /// Number of [delete] calls since construction (or last [reset]).
   int deleteCount = 0;
 
   /// Keys passed to [read], in order, duplicates included.
@@ -63,7 +63,7 @@ class FakeCacheService implements CacheService {
   /// Keys passed to [write], in order, duplicates included.
   List<String> get writeKeys => List.unmodifiable(_writeKeys);
 
-  /// Unmodifiable view of stored entries.
+  /// Unmodifiable view of the underlying key→CacheEntry map.
   Map<String, CacheEntry> get entries => Map.unmodifiable(_data);
 
   /// Whether [key] is currently present in the cache.
