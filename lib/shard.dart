@@ -57,3 +57,4 @@
 library;
 
 export 'src/src.dart';
+export 'src/observability/logging_observer.dart';
