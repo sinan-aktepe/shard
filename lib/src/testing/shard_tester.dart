@@ -186,6 +186,48 @@ class ShardTester<T> {
     }
   }
 
+  /// Waits for the next emission and returns it.
+  ///
+  /// Does NOT return the current `shard.state` or any historical recorded
+  /// state — only the next emission after this call. Throws
+  /// [ShardTimeoutError] if no emission arrives within [timeout].
+  Future<T> waitForNext({
+    Duration timeout = const Duration(seconds: 1),
+  }) {
+    return _waitForNextInternal(timeout);
+  }
+
+  /// Waits for a state that satisfies [predicate] and returns it.
+  ///
+  /// Checks the current `shard.state` synchronously; if it already satisfies
+  /// the predicate, returns it immediately. Otherwise subscribes and returns
+  /// the first future emission for which `predicate(state)` is true. Throws
+  /// [ShardTimeoutError] if no satisfying state arrives within [timeout].
+  Future<T> waitFor(
+    bool Function(T state) predicate, {
+    Duration timeout = const Duration(seconds: 1),
+  }) async {
+    if (_isDisposed) {
+      throw StateError('ShardTester has been disposed');
+    }
+    if (predicate(_shard.state)) {
+      return _shard.state;
+    }
+    final completer = Completer<T>();
+    final wait = _PendingWait<T>(completer, predicate: predicate);
+    _waiters.add(wait);
+    return completer.future.timeout(
+      timeout,
+      onTimeout: () {
+        _waiters.remove(wait);
+        throw ShardTimeoutError(
+          'Timed out waiting for matching state after '
+          '${timeout.inMilliseconds}ms',
+        );
+      },
+    );
+  }
+
   Future<void> _waitForCount(int n, Duration timeout) async {
     if (_states.length >= n) return;
     final deadline = DateTime.now().add(timeout);
