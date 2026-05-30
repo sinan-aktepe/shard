@@ -34,7 +34,8 @@ import '../state_management/shard_observer.dart';
 class LoggingObserver extends ShardObserver {
   /// Creates a [LoggingObserver].
   ///
-  /// - [enabled] - If null, defaults to [kDebugMode]. Pass true to force on.
+  /// - [enabled] - If null, defaults to [kDebugMode] (release builds: inert).
+  ///   Pass `true` to force on; pass `false` to silence in every environment.
   /// - [logChanges] - Whether to log `onChange` events. Default `true`.
   /// - [logErrors] - Whether to log `onError` events. Default `true`.
   /// - [includeStackTrace] - Append stack trace to error logs. Default `false`.

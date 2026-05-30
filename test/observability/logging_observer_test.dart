@@ -5,6 +5,7 @@ class _CounterShard extends Shard<int> {
   _CounterShard() : super(0);
   void increment() => emit(state + 1);
   void fail() => addError(Exception('boom'), StackTrace.current);
+  void failNoTrace() => addError(Exception('boom'));
 }
 
 void main() {
@@ -113,6 +114,22 @@ void main() {
       shard.dispose();
     });
 
+    test('shouldLog predicate allows matching shards through', () {
+      final lines = <String>[];
+      Shard.observer = LoggingObserver(
+        enabled: true,
+        shouldLog: (s) => s is _CounterShard,
+        printer: lines.add,
+      );
+
+      final shard = _CounterShard();
+      shard.increment();
+
+      expect(lines, hasLength(1));
+      expect(lines.first, contains('_CounterShard'));
+      shard.dispose();
+    });
+
     test('includeStackTrace appends trace to error logs', () {
       final lines = <String>[];
       Shard.observer = LoggingObserver(
@@ -126,6 +143,22 @@ void main() {
 
       expect(lines, hasLength(1));
       expect(lines.first.split('\n').length, greaterThan(1));
+      shard.dispose();
+    });
+
+    test('includeStackTrace tolerates null stack traces', () {
+      final lines = <String>[];
+      Shard.observer = LoggingObserver(
+        enabled: true,
+        includeStackTrace: true,
+        printer: lines.add,
+      );
+
+      final shard = _CounterShard();
+      shard.failNoTrace();
+
+      expect(lines, hasLength(1));
+      expect(lines.first.split('\n').length, 1);
       shard.dispose();
     });
   });
