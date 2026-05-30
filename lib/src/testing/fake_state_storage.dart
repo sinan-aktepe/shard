@@ -23,6 +23,10 @@ class FakeStateStorage implements StateStorage {
   Object? loadError;
 
   /// If non-null, [save] throws this object instead of recording the write.
+  ///
+  /// Note: the failed save still increments [saveCount] and appends to
+  /// [savedKeys] (the call attempt is observable), but [data] / [rawValue]
+  /// are NOT updated.
   Object? saveError;
 
   /// If non-null, [load] awaits this duration before completing.
@@ -54,7 +58,11 @@ class FakeStateStorage implements StateStorage {
     _data[key] = value;
   }
 
-  /// Wipes stored data; preserves counters, errors, and delays.
+  /// Wipes stored data only.
+  ///
+  /// Preserves [loadCount], [saveCount], [savedKeys], [loadError],
+  /// [saveError], [loadDelay], and [saveDelay]. Use [reset] to wipe
+  /// every internal field.
   void clear() {
     _data.clear();
   }

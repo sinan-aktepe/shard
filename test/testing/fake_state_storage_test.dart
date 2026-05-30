@@ -74,12 +74,13 @@ void main() {
       expect(() => view['x'] = 'y', throwsUnsupportedError);
     });
 
-    test('clear wipes data, keeps counters', () async {
+    test('clear wipes data, keeps counters and savedKeys', () async {
       final storage = FakeStateStorage();
       await storage.save('k', 'v');
       storage.clear();
       expect(await storage.load('k'), isNull);
       expect(storage.saveCount, 1);
+      expect(storage.savedKeys, ['k']);
     });
 
     test('reset wipes data, counters, errors, delays', () async {
@@ -89,6 +90,7 @@ void main() {
       await storage.save('k', 'v');
       storage.reset();
       expect(storage.saveCount, 0);
+      expect(storage.savedKeys, isEmpty);
       expect(storage.loadError, isNull);
       expect(storage.saveDelay, isNull);
       expect(await storage.load('k'), isNull);
