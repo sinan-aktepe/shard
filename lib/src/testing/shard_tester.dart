@@ -54,8 +54,7 @@ class ShardTester<T> {
 
   final Shard<T> _shard;
   final List<T> _states = [];
-  // ignore: prefer_final_fields
-  List<_PendingWait<T>> _waiters = [];
+  final List<_PendingWait<T>> _waiters = [];
   bool _isDisposed = false;
 
   /// The shard being observed.
@@ -115,11 +114,122 @@ class ShardTester<T> {
     }
   }
 
+  /// Asserts the recorded state sequence matches [expected] in order.
+  ///
+  /// By default the comparison is a prefix match: if [expected] has length N,
+  /// only the first N entries of [recordedStates] are checked. Pass
+  /// `exactMatch: true` to additionally require `recordedStates.length` to
+  /// equal `expected.length`.
+  ///
+  /// If fewer than `expected.length` states have been recorded, waits up to
+  /// [timeout] for more to arrive. After the timeout (or once enough states
+  /// are collected) the comparison runs.
+  ///
+  /// Throws [ShardAssertionError] with full expected/actual diff on mismatch.
+  Future<void> expectStates(
+    List<T> expected, {
+    Duration timeout = const Duration(seconds: 1),
+    bool exactMatch = false,
+  }) async {
+    if (expected.isNotEmpty) {
+      await _waitForCount(expected.length, timeout);
+    } else if (exactMatch) {
+      // Wait the full window to confirm no emissions arrived.
+      await Future<void>.delayed(timeout);
+    }
+
+    if (exactMatch && _states.length != expected.length) {
+      throw ShardAssertionError(
+        'Expected exactly ${expected.length} states but recorded '
+        '${_states.length}.\n'
+        'Expected: $expected\n'
+        'Actual:   $_states',
+      );
+    }
+    if (_states.length < expected.length) {
+      throw ShardAssertionError(
+        'Expected at least ${expected.length} states but recorded only '
+        '${_states.length}.\n'
+        'Expected: $expected\n'
+        'Actual:   $_states',
+      );
+    }
+    for (var i = 0; i < expected.length; i++) {
+      if (_states[i] != expected[i]) {
+        throw ShardAssertionError(
+          'State at index $i mismatch.\n'
+          'Expected[$i]: ${expected[i]}\n'
+          'Actual[$i]:   ${_states[i]}\n'
+          'Expected: $expected\n'
+          'Actual:   $_states',
+        );
+      }
+    }
+  }
+
+  /// Asserts no states are emitted within [window].
+  ///
+  /// Useful for verifying debounce/throttle behavior or that a no-op did
+  /// nothing. Snapshots `recordedStates.length` at call time and asserts
+  /// that no new entries arrive before [window] elapses.
+  Future<void> expectNoMoreStates({
+    Duration window = const Duration(milliseconds: 100),
+  }) async {
+    final snapshot = _states.length;
+    await Future<void>.delayed(window);
+    if (_states.length > snapshot) {
+      throw ShardAssertionError(
+        'Expected no more states within $window but recorded '
+        '${_states.length - snapshot} new state(s): '
+        '${_states.sublist(snapshot)}',
+      );
+    }
+  }
+
+  Future<void> _waitForCount(int n, Duration timeout) async {
+    if (_states.length >= n) return;
+    final deadline = DateTime.now().add(timeout);
+    while (_states.length < n) {
+      final remaining = deadline.difference(DateTime.now());
+      if (remaining <= Duration.zero) return;
+      try {
+        await _waitForNextInternal(remaining);
+      } on ShardTimeoutError {
+        return; // proceed to assertion, which will report the shortfall
+      }
+    }
+  }
+
+  Future<T> _waitForNextInternal(Duration timeout) async {
+    if (_isDisposed) {
+      throw StateError('ShardTester has been disposed');
+    }
+    final completer = Completer<T>();
+    final wait = _PendingWait<T>(completer);
+    _waiters.add(wait);
+    return completer.future.timeout(
+      timeout,
+      onTimeout: () {
+        _waiters.remove(wait);
+        throw ShardTimeoutError(
+          'Timed out waiting for next state after ${timeout.inMilliseconds}ms',
+        );
+      },
+    );
+  }
+
   void _onChange() {
     if (_isDisposed) return;
     final newState = _shard.state;
     _states.add(newState);
-    // Future tasks (7 and 8) will use _waiters to wake up pending waitFor calls.
+    final satisfied = <_PendingWait<T>>[];
+    for (final w in _waiters) {
+      if (w.predicate == null || w.predicate!(newState)) {
+        if (!w.completer.isCompleted) w.completer.complete(newState);
+        satisfied.add(w);
+      }
+    }
+    _waiters.removeWhere(satisfied.contains);
   }
 }
 
