@@ -1,3 +1,14 @@
+## 1.1.0
+
+* **New**: `LoggingObserver` — a `ShardObserver` subclass that logs state changes and errors via `dart:developer.log(name: 'shard')` for DevTools integration. Defaults to `kDebugMode` so it's inert in release builds. Configurable `printer`, `shouldLog` predicate, `includeStackTrace`, and independent toggles for `logChanges` / `logErrors`.
+* **New**: `package:shard/shard_test.dart` — a separate public entry point for test utilities. Production builds do not link this code.
+  * `ShardTester<T>` for capturing and asserting state sequences (`recordedStates`, `expectStates`, `expectNoMoreStates`, `waitForNext`, `waitFor`, `clear`, `dispose`, plus a `scope` static helper).
+  * `shardTest<S, T>()` declarative helper for one-shot `build → act → expect` tests.
+  * `FakeStateStorage` and `FakeCacheService` — in-memory implementations of the `StateStorage` / `CacheService` interfaces with failure injection, latency simulation, and call inspection.
+  * `MockShardObserver` (plus `ObservedChange<T>` / `ObservedError` records) with a `scope` helper that safely installs/restores the global `Shard.observer` in a `finally` block.
+  * `ShardAssertionError` / `ShardTimeoutError` — the error types `ShardTester` throws on failure.
+* **Fix**: `StatePersistenceMixin.disposePersistenceIfEnabled` previously reset `_saveQueue` to a fresh future and then called `saveState()`, which short-circuited because `_isDisposed` was already true. As a result, a pending debounced save was silently dropped on disposal. Disposal now flushes the final write by chaining it onto the existing save queue and bypassing the `isDisposed` guard.
+
 ## 1.0.1
 
 * Updated README with improved documentation and examples
