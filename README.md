@@ -125,7 +125,8 @@ class CounterScreen extends StatelessWidget {
 | **Cache** | `CacheService`, `MemoryCacheService`, `CacheMixin` — TTL-based caching for shards & repos |
 | **Widgets** | `ShardBuilder`, `ShardSelector`, `AsyncShardBuilder`, `MultiShardProvider` |
 | **DI** | `ShardLocator` — eager & lazy singletons, `isRegistered()`, `reset()` for tests |
-| **Observability** | `ShardObserver` — global `onChange` / `onError` hooks |
+| **Observability** | `ShardObserver`, `LoggingObserver` — global `onChange` / `onError` hooks; debug-build logger out of the box |
+| **Testing** | `package:shard/shard_test.dart` — `ShardTester`, `FakeStateStorage`, `FakeCacheService`, `MockShardObserver`, declarative `shardTest()` helper |
 
 ---
 
@@ -357,6 +358,87 @@ void main() {
   Shard.observer = AppObserver();
   runApp(MyApp());
 }
+```
+
+### LoggingObserver (Debug Out of the Box)
+
+Drop-in debug logger; inert in release builds (uses `kDebugMode`):
+
+```dart
+void main() {
+  Shard.observer = LoggingObserver();
+  runApp(MyApp());
+}
+```
+
+Customize sink and filtering:
+
+```dart
+Shard.observer = LoggingObserver(
+  logChanges: false,
+  shouldLog: (shard) => shard is! NoisyShard,
+  printer: (msg) => Sentry.captureMessage(msg),
+);
+```
+
+---
+
+## Testing your shards
+
+Shard ships a dedicated test utility entry point — import it from your test files:
+
+```dart
+import 'package:shard/shard_test.dart';
+```
+
+Assert state sequences with `ShardTester`:
+
+```dart
+test('counter increments by 1', () async {
+  final shard = CounterShard();
+  final tester = ShardTester(shard);
+  addTearDown(tester.dispose);
+  addTearDown(shard.dispose);
+
+  shard.increment();
+  shard.increment();
+
+  await tester.expectStates([1, 2]);
+});
+```
+
+Or use the declarative `shardTest()` helper:
+
+```dart
+test('increments by 1', () async {
+  await shardTest<CounterShard, int>(
+    build: () => CounterShard(),
+    act: (s) async => s.increment(),
+    expect: [1],
+  );
+});
+```
+
+Test persistence and caching with in-memory fakes:
+
+```dart
+final storage = FakeStateStorage();
+final shard = TodoShard(storage: storage);
+// ... assert storage.rawValue('todos') etc.
+
+final cache = FakeCacheService()..seed('user_42', User(id: '42'));
+// ... pass cache to your FutureShard for cached-path testing
+```
+
+Capture global observer events in tests with `MockShardObserver.scope`:
+
+```dart
+await MockShardObserver.scope((observer) async {
+  final shard = AuthShard();
+  addTearDown(shard.dispose);
+  shard.login(...);
+  expect(observer.errorsFor(shard), isEmpty);
+});
 ```
 
 ---
