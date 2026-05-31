@@ -77,6 +77,19 @@ void main() {
       });
     });
 
+    test('cancelAllDebounce cancels all pending keys', () {
+      fakeAsync((async) {
+        final s = _DebounceShard();
+        s.run('a');
+        s.run('b');
+        s.run('c');
+        s.cancelAll();
+        async.elapse(const Duration(milliseconds: 200));
+        expect(s.callCount, 0);
+        s.dispose();
+      });
+    });
+
     test('dispose cancels all pending debounces', () {
       fakeAsync((async) {
         final s = _DebounceShard();
@@ -140,6 +153,34 @@ void main() {
         s.run('k');
         expect(s.callCount, 2);
         s.dispose();
+      });
+    });
+
+    test('cancelAllThrottle resets all windows', () {
+      fakeAsync((async) {
+        final s = _ThrottleShard();
+        s.run('a');
+        s.run('b');
+        expect(s.callCount, 2);
+        // Within window — these would be ignored.
+        expect(s.run('a'), isFalse);
+        expect(s.run('b'), isFalse);
+        s.cancelAll();
+        // After cancelAll, windows are reset, so these execute again.
+        expect(s.run('a'), isTrue);
+        expect(s.run('b'), isTrue);
+        expect(s.callCount, 4);
+        s.dispose();
+      });
+    });
+
+    test('dispose cancels all pending throttles', () {
+      fakeAsync((async) {
+        final s = _ThrottleShard();
+        s.run('a');
+        s.run('b');
+        s.dispose();
+        expect(async.pendingTimers, isEmpty);
       });
     });
   });

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shard/shard.dart';
 import 'package:shard/shard_test.dart';
@@ -41,6 +43,18 @@ class _ErrShard extends FutureShard<int> {
   Future<int> build() async {
     throw StateError('build failed');
   }
+}
+
+class _PendingShard extends FutureShard<int> {
+  _PendingShard({required this.fake, required this.completer});
+  final FakeCacheService fake;
+  final Completer<int> completer;
+
+  @override
+  CacheService get cacheService => fake;
+
+  @override
+  Future<int> build() => completer.future;
 }
 
 void main() {
@@ -130,6 +144,29 @@ void main() {
     await tester.waitFor((s) => s is AsyncData<int>);
     expect(shard.buildCount, 2);
     expect(cache.deleteCount, 1);
+  });
+
+  test('dispose mid-fetch is safe', () async {
+    final completer = Completer<int>();
+    final shard = _PendingShard(fake: FakeCacheService(), completer: completer);
+    final tester = ShardTester(shard);
+    addTearDown(tester.dispose);
+    // Note: no addTearDown(shard.dispose) — this test disposes the shard
+    // explicitly mid-fetch, and Shard.dispose is not idempotent.
+
+    shard.onInit();
+    // build() is awaiting the completer — no emit has happened yet.
+    expect(shard.state, isA<AsyncLoading<int>>());
+    expect(tester.recordedStates, isEmpty);
+
+    // Dispose while build() is still pending.
+    shard.dispose();
+
+    // Late-resolve the build. The isDisposed guard in _fetch must skip the
+    // emit; emitting on a disposed ChangeNotifier would throw.
+    completer.complete(42);
+
+    await tester.expectNoMoreStates(window: const Duration(milliseconds: 50));
   });
 
   test('cacheKey override is used', () async {

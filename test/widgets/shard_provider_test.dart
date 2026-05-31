@@ -20,6 +20,11 @@ class _LifecycleShard extends Shard<int> {
   }
 }
 
+class _CounterShard extends Shard<int> {
+  _CounterShard() : super(0);
+  void inc() => emit(state + 1);
+}
+
 void main() {
   testWidgets('create constructor: onInit called, dispose called on removal',
       (tester) async {
@@ -58,6 +63,66 @@ void main() {
     expect(external.disposeCount, 0);
     expect(external.initCount, 0); // value constructor does NOT call onInit
     external.dispose();
+  });
+
+  testWidgets('of(listen: true) does NOT rebuild on emit', (tester) async {
+    // Shard package intentionally has no implicit context.watch subscription.
+    // Rebuilds happen exclusively via ShardBuilder/ShardSelector.
+    final shard = _CounterShard();
+    int buildCount = 0;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ShardProvider<_CounterShard>.value(
+          value: shard,
+          child: Builder(builder: (context) {
+            buildCount++;
+            final s = ShardProvider.of<_CounterShard>(context, listen: true);
+            return Text('${s.state}', textDirection: TextDirection.ltr);
+          }),
+        ),
+      ),
+    );
+
+    expect(buildCount, 1);
+    expect(find.text('0'), findsOneWidget);
+
+    shard.inc();
+    await tester.pump();
+
+    expect(buildCount, 1);
+    expect(find.text('0'), findsOneWidget);
+
+    shard.dispose();
+  });
+
+  testWidgets('of(listen: false) does NOT rebuild on emit', (tester) async {
+    final shard = _CounterShard();
+    int buildCount = 0;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ShardProvider<_CounterShard>.value(
+          value: shard,
+          child: Builder(builder: (context) {
+            buildCount++;
+            final s = ShardProvider.of<_CounterShard>(context, listen: false);
+            return Text('${s.state}', textDirection: TextDirection.ltr);
+          }),
+        ),
+      ),
+    );
+
+    expect(buildCount, 1);
+    expect(find.text('0'), findsOneWidget);
+
+    shard.inc();
+    await tester.pump();
+
+    expect(buildCount, 1);
+    expect(find.text('0'), findsOneWidget);
+
+    shard.dispose();
   });
 
   testWidgets('of() throws when no provider above', (tester) async {

@@ -410,7 +410,7 @@ With `includeStackTrace: true`, the stack trace is appended on the next line(s),
 
 #### `widgets/`
 
-- **`shard_provider_test.dart`** — `create` constructor: `onInit` called once, `dispose` called on removal; `value` constructor: `dispose` NOT called on removal; `of()` with `listen: true` rebuilds on emit; `of()` with `listen: false` does not; assertion error if no provider in tree.
+- **`shard_provider_test.dart`** — `create` constructor: `onInit` called once, `dispose` called on removal; `value` constructor: `dispose` NOT called on removal; `of()` with `listen: true` and `of()` with `listen: false` both return the shard but neither rebuilds on emit — rebuilds happen exclusively via `ShardBuilder`/`ShardSelector` (no implicit `context.watch` subscription, by design); assertion error if no provider in tree.
 - **`shard_builder_test.dart`** — rebuilds on every emit; `buildWhen: false` suppresses rebuild; `listener` runs as side effect; `listenWhen: false` suppresses listener; direct `shard:` reference works without provider; previous state argument is correct.
 - **`shard_selector_test.dart`** — rebuilds only when `selector(state)` returns a different value (by `==`); selector returning equal value across emits skips rebuild.
 - **`async_shard_builder_test.dart`** — Loading → `onLoading`; Data → `onData`; Error → `onError`; `showDataOnLoading: true` shows data when Loading has `previousData`; defaults for missing `onLoading` / `onError`.
