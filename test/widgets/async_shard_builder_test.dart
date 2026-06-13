@@ -22,7 +22,8 @@ void main() {
       MaterialApp(
         home: AsyncShardBuilder<_ManualAsyncShard, String>(
           shard: shard,
-          onLoading: (_) => const Text('LOADING', textDirection: TextDirection.ltr),
+          onLoading: (_) =>
+              const Text('LOADING', textDirection: TextDirection.ltr),
           onData: (_, d) => Text(d, textDirection: TextDirection.ltr),
         ),
       ),
@@ -54,7 +55,8 @@ void main() {
         home: AsyncShardBuilder<_ManualAsyncShard, String>(
           shard: shard,
           onData: (_, d) => Text(d, textDirection: TextDirection.ltr),
-          onError: (_, e, st) => Text('ERR: $e', textDirection: TextDirection.ltr),
+          onError: (_, e, st) =>
+              Text('ERR: $e', textDirection: TextDirection.ltr),
         ),
       ),
     );
@@ -63,8 +65,9 @@ void main() {
     expect(find.textContaining('ERR'), findsOneWidget);
   });
 
-  testWidgets('showDataOnLoading: true shows previousData during reload',
-      (tester) async {
+  testWidgets('showDataOnLoading: true shows previousData during reload', (
+    tester,
+  ) async {
     final shard = _ManualAsyncShard();
     addTearDown(shard.dispose);
     shard.setData('first');
@@ -72,7 +75,8 @@ void main() {
       MaterialApp(
         home: AsyncShardBuilder<_ManualAsyncShard, String>(
           shard: shard,
-          onLoading: (_) => const Text('LOADING', textDirection: TextDirection.ltr),
+          onLoading: (_) =>
+              const Text('LOADING', textDirection: TextDirection.ltr),
           onData: (_, d) => Text(d, textDirection: TextDirection.ltr),
         ),
       ),
@@ -104,8 +108,7 @@ void main() {
       MaterialApp(
         home: AsyncShardBuilder<_IdleAsyncShard, String>(
           shard: shard,
-          onIdle: (_) =>
-              const Text('IDLE', textDirection: TextDirection.ltr),
+          onIdle: (_) => const Text('IDLE', textDirection: TextDirection.ltr),
           onData: (_, d) => Text(d, textDirection: TextDirection.ltr),
         ),
       ),
@@ -113,8 +116,9 @@ void main() {
     expect(find.text('IDLE'), findsOneWidget);
   });
 
-  testWidgets('falls back to onLoading when idle and onIdle omitted',
-      (tester) async {
+  testWidgets('falls back to onLoading when idle and onIdle omitted', (
+    tester,
+  ) async {
     final shard = _IdleAsyncShard();
     addTearDown(shard.dispose);
     await tester.pumpWidget(

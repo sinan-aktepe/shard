@@ -151,8 +151,7 @@ class _ShardListenerState<T extends Shard<S>, S>
   }
 
   @override
-  Widget build(BuildContext context) =>
-      widget.child ?? const SizedBox.shrink();
+  Widget build(BuildContext context) => widget.child ?? const SizedBox.shrink();
 }
 
 /// Nests multiple [ShardListener]s around a single [child], analogous to

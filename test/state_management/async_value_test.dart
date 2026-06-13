@@ -16,7 +16,8 @@ void main() {
 
     test('with different previousData are not equal', () {
       expect(
-        AsyncLoading<int>(previousData: 1) == AsyncLoading<int>(previousData: 2),
+        AsyncLoading<int>(previousData: 1) ==
+            AsyncLoading<int>(previousData: 2),
         isFalse,
       );
     });
@@ -64,10 +65,7 @@ void main() {
   group('AsyncError', () {
     test('with same error and previousData are equal', () {
       final err = Exception('boom');
-      expect(
-        AsyncError<int>(err, null, 5),
-        AsyncError<int>(err, null, 5),
-      );
+      expect(AsyncError<int>(err, null, 5), AsyncError<int>(err, null, 5));
     });
 
     test('with different errors are not equal', () {
@@ -129,10 +127,7 @@ void main() {
     });
 
     test('AsyncIdle of different types are not equal', () {
-      expect(
-        const AsyncIdle<int>(),
-        isNot(equals(const AsyncIdle<String>())),
-      );
+      expect(const AsyncIdle<int>(), isNot(equals(const AsyncIdle<String>())));
     });
   });
 
@@ -173,10 +168,9 @@ void main() {
 
   group('maybeWhen', () {
     test('falls through to orElse when the matching handler is null', () {
-      final r = const AsyncData<int>(1).maybeWhen(
-        loading: (_) => 'loading',
-        orElse: () => 'else',
-      );
+      final r = const AsyncData<int>(
+        1,
+      ).maybeWhen(loading: (_) => 'loading', orElse: () => 'else');
       expect(r, 'else');
     });
 
@@ -189,10 +183,9 @@ void main() {
     });
 
     test('uses the matching handler when provided', () {
-      final r = const AsyncData<int>(1).maybeWhen(
-        data: (d) => 'data:$d',
-        orElse: () => 'else',
-      );
+      final r = const AsyncData<int>(
+        1,
+      ).maybeWhen(data: (d) => 'data:$d', orElse: () => 'else');
       expect(r, 'data:1');
     });
   });
@@ -244,15 +237,18 @@ void main() {
       expect(r, const AsyncData<int>(42));
     });
 
-    test('returns AsyncError on throw, carrying stack and previousData', () async {
-      final r = await AsyncValue.guard<int>(
-        () async => throw Exception('boom'),
-        previousData: 7,
-      );
-      expect(r, isA<AsyncError<int>>());
-      final err = r as AsyncError<int>;
-      expect(err.previousData, 7);
-      expect(err.stackTrace, isNotNull);
-    });
+    test(
+      'returns AsyncError on throw, carrying stack and previousData',
+      () async {
+        final r = await AsyncValue.guard<int>(
+          () async => throw Exception('boom'),
+          previousData: 7,
+        );
+        expect(r, isA<AsyncError<int>>());
+        final err = r as AsyncError<int>;
+        expect(err.previousData, 7);
+        expect(err.stackTrace, isNotNull);
+      },
+    );
   });
 }

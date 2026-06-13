@@ -107,7 +107,8 @@ void main() {
 
   test('onLoadError fires when storage load fails', () {
     fakeAsync((async) {
-      final storage = FakeStateStorage()..loadError = StateError('disk read failed');
+      final storage = FakeStateStorage()
+        ..loadError = StateError('disk read failed');
       final shard = _MyShard();
       Object? capturedError;
       shard.enablePersistence(
@@ -284,32 +285,34 @@ void main() {
     });
   });
 
-  test('migrates legacy bare data on load (migrate called with fromVersion 1)',
-      () {
-    fakeAsync((async) {
-      final storage = FakeStateStorage(initialData: {'k': '5'});
-      final shard = _MyShard();
-      int? loaded;
-      int? migratedFrom;
-      shard.enablePersistence(
-        key: 'k',
-        storage: storage,
-        serializer: const IntSerializer(),
-        toPersistence: (s) => s,
-        version: 2,
-        migrate: (from, payload) {
-          migratedFrom = from;
-          return (int.parse(payload) * 10).toString();
-        },
-        onLoadComplete: (d) => loaded = d,
-      );
-      async.flushMicrotasks();
-      expect(migratedFrom, 1);
-      expect(loaded, 50);
-      shard.disablePersistence();
-      shard.dispose();
-    });
-  });
+  test(
+    'migrates legacy bare data on load (migrate called with fromVersion 1)',
+    () {
+      fakeAsync((async) {
+        final storage = FakeStateStorage(initialData: {'k': '5'});
+        final shard = _MyShard();
+        int? loaded;
+        int? migratedFrom;
+        shard.enablePersistence(
+          key: 'k',
+          storage: storage,
+          serializer: const IntSerializer(),
+          toPersistence: (s) => s,
+          version: 2,
+          migrate: (from, payload) {
+            migratedFrom = from;
+            return (int.parse(payload) * 10).toString();
+          },
+          onLoadComplete: (d) => loaded = d,
+        );
+        async.flushMicrotasks();
+        expect(migratedFrom, 1);
+        expect(loaded, 50);
+        shard.disablePersistence();
+        shard.dispose();
+      });
+    },
+  );
 
   test('round-trips an envelope without migrating at the same version', () {
     fakeAsync((async) {

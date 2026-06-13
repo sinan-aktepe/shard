@@ -93,28 +93,33 @@ void main() {
     shard.dispose();
   });
 
-  test('lifecycle observer is removed on dispose (no save afterwards)',
-      () async {
-    final storage = FakeStateStorage();
-    final shard = _MyShard();
-    shard.enablePersistence(
-      key: 'k',
-      storage: storage,
-      serializer: const IntSerializer(),
-      toPersistence: (s) => s,
-      autoLoad: false,
-      debounceDuration: const Duration(seconds: 10),
-      flushOnPause: true,
-    );
+  test(
+    'lifecycle observer is removed on dispose (no save afterwards)',
+    () async {
+      final storage = FakeStateStorage();
+      final shard = _MyShard();
+      shard.enablePersistence(
+        key: 'k',
+        storage: storage,
+        serializer: const IntSerializer(),
+        toPersistence: (s) => s,
+        autoLoad: false,
+        debounceDuration: const Duration(seconds: 10),
+        flushOnPause: true,
+      );
 
-    shard.setTo(5);
-    shard.dispose(); // flushes once and removes the observer
-    await pumpEventQueue();
-    final savesAfterDispose = storage.saveCount;
+      shard.setTo(5);
+      shard.dispose(); // flushes once and removes the observer
+      await pumpEventQueue();
+      final savesAfterDispose = storage.saveCount;
 
-    _pause(binding);
-    await pumpEventQueue();
+      _pause(binding);
+      await pumpEventQueue();
 
-    expect(storage.saveCount, savesAfterDispose); // observer gone → no extra save
-  });
+      expect(
+        storage.saveCount,
+        savesAfterDispose,
+      ); // observer gone → no extra save
+    },
+  );
 }

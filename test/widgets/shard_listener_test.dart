@@ -8,8 +8,9 @@ class _Counter extends Shard<int> {
 }
 
 void main() {
-  testWidgets('listener fires with (prev, curr) and does not rebuild child',
-      (tester) async {
+  testWidgets('listener fires with (prev, curr) and does not rebuild child', (
+    tester,
+  ) async {
     final shard = _Counter();
     addTearDown(shard.dispose);
     final calls = <(int, int)>[];
@@ -37,8 +38,9 @@ void main() {
     expect(childBuilds, 1); // listener did not rebuild the child
   });
 
-  testWidgets('listenWhen returning false suppresses the listener',
-      (tester) async {
+  testWidgets('listenWhen returning false suppresses the listener', (
+    tester,
+  ) async {
     final shard = _Counter();
     addTearDown(shard.dispose);
     var fired = 0;
@@ -59,8 +61,9 @@ void main() {
     expect(fired, 0);
   });
 
-  testWidgets('rebinds when a different shard instance is supplied',
-      (tester) async {
+  testWidgets('rebinds when a different shard instance is supplied', (
+    tester,
+  ) async {
     final a = _Counter();
     final b = _Counter();
     addTearDown(a.dispose);
@@ -68,12 +71,12 @@ void main() {
     final observed = <int>[];
 
     Widget build(_Counter s) => MaterialApp(
-          home: ShardListener<_Counter, int>(
-            shard: s,
-            listener: (context, p, c) => observed.add(c),
-            child: const SizedBox(),
-          ),
-        );
+      home: ShardListener<_Counter, int>(
+        shard: s,
+        listener: (context, p, c) => observed.add(c),
+        child: const SizedBox(),
+      ),
+    );
 
     await tester.pumpWidget(build(a));
     await tester.pumpWidget(build(b)); // swap shard instance
@@ -120,8 +123,9 @@ void main() {
     expect(bFired, 1);
   });
 
-  testWidgets('MultiShardListener nests listeners outermost-first',
-      (tester) async {
+  testWidgets('MultiShardListener nests listeners outermost-first', (
+    tester,
+  ) async {
     final shard = _Counter();
     addTearDown(shard.dispose);
     final order = <String>[];

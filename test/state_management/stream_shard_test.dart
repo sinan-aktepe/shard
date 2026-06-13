@@ -36,10 +36,7 @@ void main() {
     ctrl.add(1);
     ctrl.add(2);
 
-    await tester.expectStates([
-      AsyncData<int>(1),
-      AsyncData<int>(2),
-    ]);
+    await tester.expectStates([AsyncData<int>(1), AsyncData<int>(2)]);
   });
 
   test('emits AsyncError when stream errors', () async {

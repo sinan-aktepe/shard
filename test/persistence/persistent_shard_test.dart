@@ -12,7 +12,7 @@ int? _envVersion(String? raw) =>
 
 class _SimpleCounter extends SimplePersistentShard<int> {
   _SimpleCounter({required FakeStateStorage storage})
-      : super(0, storage: storage, serializer: const IntSerializer());
+    : super(0, storage: storage, serializer: const IntSerializer());
 
   @override
   String get persistenceKey => 'counter';
@@ -22,7 +22,7 @@ class _SimpleCounter extends SimplePersistentShard<int> {
 
 class _FactoryCounter extends SimplePersistentShard<int> {
   _FactoryCounter({required Future<StateStorage> Function() factory})
-      : super(0, storageFactory: factory, serializer: const IntSerializer());
+    : super(0, storageFactory: factory, serializer: const IntSerializer());
 
   @override
   String get persistenceKey => 'counter';
@@ -30,13 +30,13 @@ class _FactoryCounter extends SimplePersistentShard<int> {
 
 class _MigratingCounter extends SimplePersistentShard<int> {
   _MigratingCounter({required FakeStateStorage storage})
-      : super(
-          0,
-          storage: storage,
-          serializer: const IntSerializer(),
-          version: 2,
-          migrate: (from, payload) => (int.parse(payload) * 10).toString(),
-        );
+    : super(
+        0,
+        storage: storage,
+        serializer: const IntSerializer(),
+        version: 2,
+        migrate: (from, payload) => (int.parse(payload) * 10).toString(),
+      );
 
   @override
   String get persistenceKey => 'counter';
@@ -53,14 +53,14 @@ class _TodoState {
 
 class _TodoShard extends PersistentShard<_TodoState, List<String>> {
   _TodoShard({required FakeStateStorage storage})
-      : super(
-          _TodoState(status: 'loading', todos: const []),
-          storage: storage,
-          serializer: stateSerializer<List<String>>(
-            fromJson: (j) => (j as List).cast<String>(),
-            toJson: (xs) => xs,
-          ),
-        );
+    : super(
+        _TodoState(status: 'loading', todos: const []),
+        storage: storage,
+        serializer: stateSerializer<List<String>>(
+          fromJson: (j) => (j as List).cast<String>(),
+          toJson: (xs) => xs,
+        ),
+      );
 
   @override
   String get persistenceKey => 'todos';

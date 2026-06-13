@@ -53,7 +53,8 @@ void main() {
     });
 
     test('loadDelay delays load completion', () async {
-      final storage = FakeStateStorage()..loadDelay = const Duration(milliseconds: 50);
+      final storage = FakeStateStorage()
+        ..loadDelay = const Duration(milliseconds: 50);
       final sw = Stopwatch()..start();
       await storage.load('k');
       sw.stop();
@@ -111,12 +112,15 @@ void main() {
       expect(storage.deleteCount, 1);
     });
 
-    test('delete throws when deleteError is set and leaves data intact', () async {
-      final storage = FakeStateStorage(initialData: {'k': 'v'})
-        ..deleteError = Exception('boom');
-      await expectLater(storage.delete('k'), throwsException);
-      expect(storage.rawValue('k'), 'v');
-    });
+    test(
+      'delete throws when deleteError is set and leaves data intact',
+      () async {
+        final storage = FakeStateStorage(initialData: {'k': 'v'})
+          ..deleteError = Exception('boom');
+        await expectLater(storage.delete('k'), throwsException);
+        expect(storage.rawValue('k'), 'v');
+      },
+    );
 
     test('reset clears delete counters', () async {
       final storage = FakeStateStorage(initialData: {'k': 'v'});

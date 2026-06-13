@@ -67,7 +67,11 @@ sealed class AsyncValue<T> {
     AsyncIdle<T>() => idle(),
     AsyncLoading<T>(:final previousData) => loading(previousData),
     AsyncData<T>(data: final value) => data(value),
-    AsyncError<T>(error: final err, stackTrace: final st, previousData: final prev) =>
+    AsyncError<T>(
+      error: final err,
+      stackTrace: final st,
+      previousData: final prev,
+    ) =>
       error(err, st, prev),
   };
 
@@ -91,7 +95,11 @@ sealed class AsyncValue<T> {
     AsyncLoading<T>(:final previousData) =>
       loading != null ? loading(previousData) : orElse(),
     AsyncData<T>(data: final value) => data != null ? data(value) : orElse(),
-    AsyncError<T>(error: final err, stackTrace: final st, previousData: final prev) =>
+    AsyncError<T>(
+      error: final err,
+      stackTrace: final st,
+      previousData: final prev,
+    ) =>
       error != null ? error(err, st, prev) : orElse(),
   };
 
@@ -108,7 +116,11 @@ sealed class AsyncValue<T> {
       previousData: previousData == null ? null : transform(previousData),
     ),
     AsyncData<T>(data: final value) => AsyncData<R>(transform(value)),
-    AsyncError<T>(error: final err, stackTrace: final st, previousData: final prev) =>
+    AsyncError<T>(
+      error: final err,
+      stackTrace: final st,
+      previousData: final prev,
+    ) =>
       AsyncError<R>(err, st, prev == null ? null : transform(prev)),
   };
 
