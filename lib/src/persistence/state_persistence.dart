@@ -256,6 +256,9 @@ mixin StatePersistenceMixin<T, K> on Shard<T> {
     );
 
     // Register a lifecycle observer to flush on pause/detach, if requested.
+    // Remove any observer from a previous enablePersistence call first so a
+    // re-configuration cannot leak the old one.
+    _removeLifecycleObserver();
     if (flushOnPause) {
       _lifecycleObserver = _ShardLifecycleObserver(() {
         if (!isDisposed) saveState();

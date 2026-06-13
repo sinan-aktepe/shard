@@ -45,9 +45,12 @@ abstract class ComputedShard<T> extends Shard<T> {
   /// Creates a computed shard listening to [sources].
   ///
   /// [initial] is a throwaway value immediately overwritten by the first
-  /// [compute]; pass any valid `T`.
-  ComputedShard(this._sources, T initial) : super(initial) {
-    _recompute();
+  /// [compute]; pass any valid `T`. (Set [recomputeOnInit] to false only when
+  /// [initial] is already the correct computed value — the [computedShard]
+  /// factory does this to avoid computing twice.)
+  ComputedShard(this._sources, T initial, {bool recomputeOnInit = true})
+    : super(initial) {
+    if (recomputeOnInit) _recompute();
     for (final source in _sources) {
       source.addListener(_recompute);
     }
@@ -71,7 +74,10 @@ abstract class ComputedShard<T> extends Shard<T> {
 }
 
 class _InlineComputedShard<T> extends ComputedShard<T> {
-  _InlineComputedShard(super.sources, this._computeFn, super.initial);
+  // [initial] is already `compute()` (eagerly evaluated by the factory), so
+  // skip the constructor recompute to call `compute` exactly once at creation.
+  _InlineComputedShard(List<Listenable> sources, this._computeFn, T initial)
+    : super(sources, initial, recomputeOnInit: false);
 
   final T Function() _computeFn;
 

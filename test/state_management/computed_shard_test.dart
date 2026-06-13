@@ -29,6 +29,21 @@ void main() {
       expect(c.state, 5);
     });
 
+    test('calls compute exactly once at construction', () {
+      final a = _Source(1);
+      var count = 0;
+      final c = computedShard([a], () {
+        count++;
+        return a.state;
+      });
+      addTearDown(() {
+        c.dispose();
+        a.dispose();
+      });
+      expect(count, 1);
+      expect(c.state, 1);
+    });
+
     test('recomputes when any source notifies', () {
       final a = _Source(2);
       final b = _Source(3);

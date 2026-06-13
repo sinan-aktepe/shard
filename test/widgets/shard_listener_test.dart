@@ -119,4 +119,33 @@ void main() {
     expect(aFired, 1);
     expect(bFired, 1);
   });
+
+  testWidgets('MultiShardListener nests listeners outermost-first',
+      (tester) async {
+    final shard = _Counter();
+    addTearDown(shard.dispose);
+    final order = <String>[];
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MultiShardListener(
+          listeners: [
+            ShardListener<_Counter, int>(
+              shard: shard,
+              listener: (c, p, n) => order.add('outer'),
+            ),
+            ShardListener<_Counter, int>(
+              shard: shard,
+              listener: (c, p, n) => order.add('inner'),
+            ),
+          ],
+          child: const SizedBox(),
+        ),
+      ),
+    );
+
+    shard.inc();
+    await tester.pump();
+    expect(order, ['outer', 'inner']);
+  });
 }
