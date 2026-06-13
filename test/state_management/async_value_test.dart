@@ -173,4 +173,45 @@ void main() {
       expect(r, 'data:1');
     });
   });
+
+  group('mapData', () {
+    test('transforms AsyncData', () {
+      expect(
+        const AsyncData<int>(2).mapData((d) => d * 10),
+        const AsyncData<int>(20),
+      );
+    });
+
+    test('keeps AsyncIdle as AsyncIdle of the new type', () {
+      expect(
+        const AsyncIdle<int>().mapData((d) => d.toString()),
+        const AsyncIdle<String>(),
+      );
+    });
+
+    test('keeps AsyncLoading, mapping previousData through transform', () {
+      expect(
+        const AsyncLoading<int>(previousData: 3).mapData((d) => d * 2),
+        const AsyncLoading<int>(previousData: 6),
+      );
+    });
+
+    test('keeps AsyncError, preserving error and mapping previousData', () {
+      final mapped = const AsyncError<int>('e', null, 4).mapData((d) => d * 2);
+      expect(mapped, isA<AsyncError<int>>());
+      expect((mapped as AsyncError<int>).previousData, 8);
+    });
+  });
+
+  group('whenData', () {
+    test('returns f(data) for AsyncData', () {
+      expect(const AsyncData<int>(5).whenData((d) => d + 1), 6);
+    });
+
+    test('returns null for idle/loading/error', () {
+      expect(const AsyncIdle<int>().whenData((d) => d + 1), isNull);
+      expect(const AsyncLoading<int>().whenData((d) => d + 1), isNull);
+      expect(const AsyncError<int>('e').whenData((d) => d + 1), isNull);
+    });
+  });
 }

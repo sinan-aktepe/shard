@@ -95,6 +95,31 @@ sealed class AsyncValue<T> {
     AsyncError<T>(error: final err, stackTrace: final st, previousData: final prev) =>
       error != null ? error(err, st, prev) : orElse(),
   };
+
+  /// Transforms the success value with [transform], preserving the current
+  /// variant. Idle stays idle; loading/error keep their shape, with any
+  /// non-null [previousData] mapped through [transform].
+  ///
+  /// ```dart
+  /// final AsyncValue<String> label = userState.mapData((u) => u.name);
+  /// ```
+  AsyncValue<R> mapData<R>(R Function(T data) transform) => switch (this) {
+    AsyncIdle<T>() => AsyncIdle<R>(),
+    AsyncLoading<T>(:final previousData) => AsyncLoading<R>(
+      previousData: previousData == null ? null : transform(previousData),
+    ),
+    AsyncData<T>(data: final value) => AsyncData<R>(transform(value)),
+    AsyncError<T>(error: final err, stackTrace: final st, previousData: final prev) =>
+      AsyncError<R>(err, st, prev == null ? null : transform(prev)),
+  };
+
+  /// Runs [f] only when this is [AsyncData]; otherwise returns null.
+  ///
+  /// ```dart
+  /// final int? length = userState.whenData((u) => u.name.length);
+  /// ```
+  R? whenData<R>(R Function(T data) f) =>
+      this is AsyncData<T> ? f((this as AsyncData<T>).data) : null;
 }
 
 /// Represents the initial, not-yet-started state of an asynchronous operation.
