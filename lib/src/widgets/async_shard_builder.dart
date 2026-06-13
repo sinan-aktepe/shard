@@ -67,6 +67,17 @@ class AsyncShardBuilder<T extends Shard<AsyncValue<D>>, D>
   /// in the widget tree.
   final T? shard;
 
+  /// Builder for the idle state (operation not started).
+  ///
+  /// Only relevant for mutation-style shards that begin in [AsyncIdle]
+  /// (for example a command shard). If not provided, the idle state falls back
+  /// to [onLoading] (or the default loading indicator).
+  ///
+  /// ```dart
+  /// onIdle: (context) => const Text('Tap to submit'),
+  /// ```
+  final Widget Function(BuildContext context)? onIdle;
+
   /// Builder for the loading state.
   ///
   /// If not provided, defaults to a centered [CircularProgressIndicator].
@@ -114,6 +125,7 @@ class AsyncShardBuilder<T extends Shard<AsyncValue<D>>, D>
   const AsyncShardBuilder({
     super.key,
     this.shard,
+    this.onIdle,
     this.onLoading,
     required this.onData,
     this.onError,
@@ -126,7 +138,7 @@ class AsyncShardBuilder<T extends Shard<AsyncValue<D>>, D>
       shard: shard,
       builder: (context, asyncValue) {
         return switch (asyncValue) {
-          AsyncIdle<D>() => _buildLoading(context, null),
+          AsyncIdle<D>() => _buildIdle(context),
           AsyncLoading<D>(:final previousData) => _buildLoading(
             context,
             previousData,
@@ -138,6 +150,9 @@ class AsyncShardBuilder<T extends Shard<AsyncValue<D>>, D>
       },
     );
   }
+
+  Widget _buildIdle(BuildContext context) =>
+      onIdle?.call(context) ?? _buildLoading(context, null);
 
   Widget _buildLoading(BuildContext context, D? previousData) {
     // If we have previous data and showDataOnLoading is true, show the data

@@ -10,6 +10,10 @@ class _ManualAsyncShard extends Shard<AsyncValue<String>> {
       emit(AsyncLoading<String>(previousData: previousData));
 }
 
+class _IdleAsyncShard extends Shard<AsyncValue<String>> {
+  _IdleAsyncShard() : super(const AsyncIdle<String>());
+}
+
 void main() {
   testWidgets('shows onLoading widget initially', (tester) async {
     final shard = _ManualAsyncShard();
@@ -91,5 +95,38 @@ void main() {
       ),
     );
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
+  });
+
+  testWidgets('shows onIdle widget when idle', (tester) async {
+    final shard = _IdleAsyncShard();
+    addTearDown(shard.dispose);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: AsyncShardBuilder<_IdleAsyncShard, String>(
+          shard: shard,
+          onIdle: (_) =>
+              const Text('IDLE', textDirection: TextDirection.ltr),
+          onData: (_, d) => Text(d, textDirection: TextDirection.ltr),
+        ),
+      ),
+    );
+    expect(find.text('IDLE'), findsOneWidget);
+  });
+
+  testWidgets('falls back to onLoading when idle and onIdle omitted',
+      (tester) async {
+    final shard = _IdleAsyncShard();
+    addTearDown(shard.dispose);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: AsyncShardBuilder<_IdleAsyncShard, String>(
+          shard: shard,
+          onLoading: (_) =>
+              const Text('LOADING', textDirection: TextDirection.ltr),
+          onData: (_, d) => Text(d, textDirection: TextDirection.ltr),
+        ),
+      ),
+    );
+    expect(find.text('LOADING'), findsOneWidget);
   });
 }
