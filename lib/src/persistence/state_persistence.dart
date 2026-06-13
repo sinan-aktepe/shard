@@ -230,6 +230,10 @@ mixin StatePersistenceMixin<T, K> on Shard<T> {
   ///
   /// This does NOT change the in-memory state — pair it with
   /// `emit(initialState)` if you also want to reset the live state.
+  ///
+  /// If you intend to dispose the shard right after clearing, call
+  /// [disablePersistence] first: otherwise the disposal flush re-saves the
+  /// current in-memory state and recreates the key you just deleted.
   Future<void> clearPersistence() async {
     final config = _persistenceConfig;
     if (config == null) return;
