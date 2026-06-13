@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shard/shard.dart';
 import 'package:shard/shard_test.dart';
@@ -88,5 +89,43 @@ void main() {
     ctrl.add(1);
     await Future<void>.delayed(const Duration(milliseconds: 20));
     expect(tester.recordedStates, isEmpty);
+  });
+
+  test('pause buffers source events; resume delivers them', () {
+    fakeAsync((async) {
+      final ctrl = StreamController<int>();
+      final shard = _TickerShard(controller: ctrl);
+      shard.onInit();
+
+      ctrl.add(1);
+      async.flushMicrotasks();
+      expect(shard.state, const AsyncData<int>(1));
+
+      shard.pause();
+      expect(shard.isPaused, isTrue);
+      ctrl.add(2);
+      async.flushMicrotasks();
+      expect(shard.state, const AsyncData<int>(1)); // unchanged while paused
+
+      shard.resume();
+      expect(shard.isPaused, isFalse);
+      async.flushMicrotasks();
+      expect(shard.state, const AsyncData<int>(2)); // buffered event delivered
+
+      shard.dispose();
+      ctrl.close();
+    });
+  });
+
+  test('pause/resume before subscription is a safe no-op', () {
+    final ctrl = StreamController<int>.broadcast();
+    final shard = _TickerShard(controller: ctrl);
+    addTearDown(shard.dispose);
+    addTearDown(ctrl.close);
+    // onInit not called → no subscription yet
+    expect(shard.isPaused, isFalse);
+    shard.pause(); // no throw
+    shard.resume(); // no throw
+    expect(shard.isPaused, isFalse);
   });
 }

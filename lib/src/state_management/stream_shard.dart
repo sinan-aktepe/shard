@@ -72,6 +72,20 @@ abstract class StreamShard<T> extends Shard<AsyncValue<T>> {
   @protected
   Stream<T> build();
 
+  /// Pauses the underlying stream subscription.
+  ///
+  /// While paused, source events are buffered per Dart's
+  /// [StreamSubscription.pause] semantics and delivered on [resume]. A no-op if
+  /// the shard has not subscribed yet (e.g. before [onInit]).
+  void pause() => _subscription?.pause();
+
+  /// Resumes a paused subscription, delivering any buffered events. A no-op if
+  /// not paused or not yet subscribed.
+  void resume() => _subscription?.resume();
+
+  /// Whether the underlying subscription is currently paused.
+  bool get isPaused => _subscription?.isPaused ?? false;
+
   /// Cancels the current subscription and re-subscribes to [build].
   ///
   /// The state transitions to [AsyncLoading] (retaining previous data)
