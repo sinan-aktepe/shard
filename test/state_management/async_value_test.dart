@@ -123,6 +123,10 @@ void main() {
       expect(v.errorOrNull, isNull);
       expect(v.stackTraceOrNull, isNull);
     });
+
+    test('toString includes the empty constructor parens', () {
+      expect(const AsyncIdle<int>().toString(), 'AsyncIdle<int>()');
+    });
   });
 
   test('isIdle is false for the other variants', () {

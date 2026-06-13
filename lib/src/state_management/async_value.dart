@@ -162,7 +162,7 @@ final class AsyncIdle<T> extends AsyncValue<T> {
   int get hashCode => runtimeType.hashCode;
 
   @override
-  String toString() => 'AsyncIdle<$T>';
+  String toString() => 'AsyncIdle<$T>()';
 }
 
 /// Represents a loading state for an asynchronous operation.
