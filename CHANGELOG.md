@@ -1,3 +1,7 @@
+## 2.0.0-dev.1
+
+* _In development — entries are added per feature and compacted before release. See `docs/superpowers/specs/2026-06-13-shard-2.0-design.md`._
+
 ## 1.2.0
 
 * **New**: `LoggingObserver` — a `ShardObserver` subclass that logs state changes and errors via `dart:developer.log(name: 'shard')` for DevTools integration. Defaults to `kDebugMode` so it's inert in release builds. Configurable `printer`, `shouldLog` predicate, `includeStackTrace`, and independent toggles for `logChanges` / `logErrors`.
