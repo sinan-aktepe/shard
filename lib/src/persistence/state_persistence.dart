@@ -217,6 +217,11 @@ mixin StatePersistenceMixin<T, K> on Shard<T> {
     int version = 1,
     String Function(int fromVersion, String payload)? migrate,
   }) {
+    assert(
+      migrate == null || version > 1,
+      'migrate only runs when the stored version is older than `version`; '
+      'with version 1 it is never called. Bump `version` to use migration.',
+    );
     // Check if disposed before enabling persistence
     if (isDisposed) {
       return;

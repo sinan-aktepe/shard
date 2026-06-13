@@ -28,6 +28,20 @@ class _FactoryCounter extends SimplePersistentShard<int> {
   String get persistenceKey => 'counter';
 }
 
+class _MigratingCounter extends SimplePersistentShard<int> {
+  _MigratingCounter({required FakeStateStorage storage})
+      : super(
+          0,
+          storage: storage,
+          serializer: const IntSerializer(),
+          version: 2,
+          migrate: (from, payload) => (int.parse(payload) * 10).toString(),
+        );
+
+  @override
+  String get persistenceKey => 'counter';
+}
+
 class _TodoState {
   _TodoState({required this.status, required this.todos});
   final String status;
@@ -85,6 +99,19 @@ void main() {
       async.elapse(const Duration(milliseconds: 600));
       expect(_envVersion(storage.rawValue('counter')), 1);
       expect(_envPayload(storage.rawValue('counter')), '2');
+      s.dispose();
+    });
+  });
+
+  test('SimplePersistentShard forwards version/migrate to persistence', () {
+    fakeAsync((async) {
+      // Legacy bare data; version 2 + migrate should run migrate(1, '5').
+      final storage = FakeStateStorage(initialData: {'counter': '5'});
+      final s = _MigratingCounter(storage: storage);
+      s.onInit();
+      async.flushMicrotasks();
+      expect(s.state, 50);
+      s.disablePersistence();
       s.dispose();
     });
   });
