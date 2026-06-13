@@ -214,4 +214,22 @@ void main() {
       expect(const AsyncError<int>('e').whenData((d) => d + 1), isNull);
     });
   });
+
+  group('guard', () {
+    test('returns AsyncData on success', () async {
+      final r = await AsyncValue.guard<int>(() async => 42);
+      expect(r, const AsyncData<int>(42));
+    });
+
+    test('returns AsyncError on throw, carrying stack and previousData', () async {
+      final r = await AsyncValue.guard<int>(
+        () async => throw Exception('boom'),
+        previousData: 7,
+      );
+      expect(r, isA<AsyncError<int>>());
+      final err = r as AsyncError<int>;
+      expect(err.previousData, 7);
+      expect(err.stackTrace, isNotNull);
+    });
+  });
 }

@@ -120,6 +120,25 @@ sealed class AsyncValue<T> {
   /// ```
   R? whenData<R>(R Function(T data) f) =>
       this is AsyncData<T> ? f((this as AsyncData<T>).data) : null;
+
+  /// Runs [future] and captures the outcome as an [AsyncValue]: [AsyncData] on
+  /// success, [AsyncError] (with the stack trace and optional [previousData])
+  /// on throw. Never throws.
+  ///
+  /// ```dart
+  /// emit(const AsyncLoading());
+  /// emit(await AsyncValue.guard(() => repository.fetch()));
+  /// ```
+  static Future<AsyncValue<T>> guard<T>(
+    Future<T> Function() future, {
+    T? previousData,
+  }) async {
+    try {
+      return AsyncData<T>(await future());
+    } catch (e, st) {
+      return AsyncError<T>(e, st, previousData);
+    }
+  }
 }
 
 /// Represents the initial, not-yet-started state of an asynchronous operation.
