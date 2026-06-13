@@ -74,6 +74,48 @@ void main() {
     expect(events, [1, 2]);
   });
 
+  testWidgets('swapping the shard prop rebinds the listener', (tester) async {
+    final a = _Counter()..inc(); // a.state == 1
+    final b = _Counter()
+      ..inc()
+      ..inc(); // b.state == 2
+    addTearDown(a.dispose);
+    addTearDown(b.dispose);
+
+    late StateSetter setOuter;
+    var useA = true;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: StatefulBuilder(
+          builder: (context, setState) {
+            setOuter = setState;
+            return ShardBuilder<_Counter, int>(
+              shard: useA ? a : b,
+              builder: (context, count) =>
+                  Text('$count', textDirection: TextDirection.ltr),
+            );
+          },
+        ),
+      ),
+    );
+    expect(find.text('1'), findsOneWidget);
+
+    setOuter(() => useA = false);
+    await tester.pump();
+    expect(find.text('2'), findsOneWidget);
+
+    // The old shard must no longer drive rebuilds.
+    a.inc();
+    await tester.pump();
+    expect(find.text('2'), findsOneWidget);
+
+    // The new shard must.
+    b.inc();
+    await tester.pump();
+    expect(find.text('3'), findsOneWidget);
+  });
+
   testWidgets('listenWhen filters listener calls', (tester) async {
     final shard = _Counter();
     addTearDown(shard.dispose);

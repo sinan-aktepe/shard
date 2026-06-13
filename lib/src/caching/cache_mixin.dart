@@ -1,4 +1,6 @@
-import 'dart:developer' show log;
+import 'dart:developer' as developer;
+
+import 'package:flutter/foundation.dart';
 
 import 'package:shard/src/caching/cache_entry.dart';
 import 'package:shard/src/caching/cache_service.dart';
@@ -39,6 +41,32 @@ import 'package:shard/src/caching/memory_cache_service.dart';
 mixin CacheMixin {
   CacheService get cacheService => MemoryCacheService();
 
+  /// Whether cache hit/miss/error events are logged.
+  ///
+  /// Defaults to [kDebugMode], so release builds stay silent and never emit
+  /// cache keys (which may contain user identifiers) to logs. Override to
+  /// force logging on or off:
+  ///
+  /// ```dart
+  /// @override
+  /// bool get logCacheEvents => false;
+  /// ```
+  bool get logCacheEvents => kDebugMode;
+
+  /// Sink for cache log lines.
+  ///
+  /// Only invoked when [logCacheEvents] is `true`. Defaults to
+  /// `dart:developer.log(name: 'shard.cache')`, which surfaces in the Flutter
+  /// DevTools Logging tab. Override to route messages elsewhere (a custom
+  /// logger, a test recorder, etc.).
+  @protected
+  void onCacheLog(String message) =>
+      developer.log(message, name: 'shard.cache');
+
+  void _log(String message) {
+    if (logCacheEvents) onCacheLog(message);
+  }
+
   Future<T> resolve<T>({
     required String key,
     required Future<T> Function() fetcher,
@@ -50,25 +78,25 @@ mixin CacheMixin {
       try {
         final cachedEntry = await cacheService.read(key);
         if (cachedEntry != null && !cachedEntry.isExpired) {
-          log('[CACHE HIT] $key');
+          _log('[CACHE HIT] $key');
           return cachedEntry.data as T;
         }
       } catch (e) {
-        log('Error while reading cache: $e');
+        _log('Error while reading cache: $e');
       }
     }
 
     late final T data;
 
     try {
-      log('[API CALL] $key');
+      _log('[API CALL] $key');
       data = await fetcher();
     } catch (error, _) {
-      log('[API ERROR] $key: $error');
+      _log('[API ERROR] $key: $error');
       if (onErrorReturnOldCache) {
         final oldEntry = await cacheService.read(key);
         if (oldEntry != null) {
-          log('[FALLBACK] returning cached data');
+          _log('[FALLBACK] returning cached data');
           return oldEntry.data as T;
         }
       }
@@ -79,7 +107,7 @@ mixin CacheMixin {
       final entry = CacheEntry(data: data, expiryDate: DateTime.now().add(ttl));
       await cacheService.write(key, entry);
     } catch (e) {
-      log('[CACHE WRITE ERROR]: $e');
+      _log('[CACHE WRITE ERROR]: $e');
     }
 
     return data;

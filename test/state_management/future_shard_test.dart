@@ -57,6 +57,26 @@ class _PendingShard extends FutureShard<int> {
   Future<int> build() => completer.future;
 }
 
+/// Builds via a fresh completer each call, so each `build()` invocation can be
+/// resolved independently and counted.
+class _SlowShard extends FutureShard<int> {
+  _SlowShard({required this.fake});
+  final FakeCacheService fake;
+  int buildCount = 0;
+  final List<Completer<int>> completers = [];
+
+  @override
+  CacheService get cacheService => fake;
+
+  @override
+  Future<int> build() {
+    buildCount++;
+    final completer = Completer<int>();
+    completers.add(completer);
+    return completer.future;
+  }
+}
+
 void main() {
   setUp(() {
     Shard.observer = null;
@@ -167,6 +187,30 @@ void main() {
     completer.complete(42);
 
     await tester.expectNoMoreStates(window: const Duration(milliseconds: 50));
+  });
+
+  test('refresh during the initial fetch does not start a second build',
+      () async {
+    final shard = _SlowShard(fake: FakeCacheService());
+    final tester = ShardTester(shard);
+    addTearDown(tester.dispose);
+    addTearDown(shard.dispose);
+
+    shard.onInit();
+    // Let the cache read resolve so build() is invoked exactly once.
+    await Future<void>.delayed(const Duration(milliseconds: 10));
+    expect(shard.buildCount, 1);
+
+    // A refresh while the first fetch is still in flight must be ignored,
+    // not spawn a concurrent second build.
+    shard.refresh();
+    await Future<void>.delayed(const Duration(milliseconds: 10));
+    expect(shard.buildCount, 1);
+
+    // Finish the single in-flight build cleanly.
+    shard.completers.first.complete(7);
+    await tester.waitFor((s) => s is AsyncData<int>);
+    expect((shard.state as AsyncData<int>).data, 7);
   });
 
   test('cacheKey override is used', () async {

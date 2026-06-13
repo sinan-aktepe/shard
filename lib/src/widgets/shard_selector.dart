@@ -116,11 +116,13 @@ class _ShardSelectorState<T extends Shard<S>, S, R>
     extends State<ShardSelector<T, S, R>> {
   T? _shard;
   R? _value;
+  bool _initialized = false;
 
   void _initializeShard(T shard) {
     _shard = shard;
     final S state = shard.state;
     _value = widget.selector(state);
+    _initialized = true;
     _shard!.addListener(_onStateChanged);
   }
 
@@ -143,6 +145,18 @@ class _ShardSelectorState<T extends Shard<S>, S, R>
   }
 
   @override
+  void didUpdateWidget(covariant ShardSelector<T, S, R> oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Rebind when a different shard instance is supplied via the [shard] prop.
+    if (!identical(widget.shard, oldWidget.shard)) {
+      _shard?.removeListener(_onStateChanged);
+      _shard = null;
+      _initialized = false;
+      _initializeShard(widget.shard ?? ShardProvider.of<T>(context));
+    }
+  }
+
+  @override
   void dispose() {
     _shard?.removeListener(_onStateChanged);
     super.dispose();
@@ -159,12 +173,12 @@ class _ShardSelectorState<T extends Shard<S>, S, R>
 
   @override
   Widget build(BuildContext context) {
-    final value = _value;
-    final shard = _shard;
-    if (value == null || shard == null) {
+    if (!_initialized || _shard == null) {
       // Return empty container while initializing
       return const SizedBox.shrink();
     }
-    return widget.builder(context, value);
+    // _value may legitimately be null when R is nullable; the selector ran,
+    // so build with it rather than treating null as "not ready".
+    return widget.builder(context, _value as R);
   }
 }

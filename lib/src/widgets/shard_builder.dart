@@ -159,6 +159,17 @@ class _ShardBuilderState<T extends Shard<S>, S>
   }
 
   @override
+  void didUpdateWidget(covariant ShardBuilder<T, S> oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Rebind when a different shard instance is supplied via the [shard] prop.
+    if (!identical(widget.shard, oldWidget.shard)) {
+      _shard?.removeListener(_onStateChanged);
+      _shard = null;
+      _initializeShard(widget.shard ?? ShardProvider.of<T>(context));
+    }
+  }
+
+  @override
   void dispose() {
     _shard?.removeListener(_onStateChanged);
     super.dispose();

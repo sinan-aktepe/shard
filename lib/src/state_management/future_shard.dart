@@ -112,13 +112,22 @@ abstract class FutureShard<T> extends Shard<AsyncValue<T>> {
 
   /// The cache key used to store and retrieve cached data.
   ///
-  /// Override this getter to provide a unique cache key.
   /// Defaults to the runtime type name.
   ///
-  /// ```dart
-  /// @override
-  /// String get cacheKey => 'user_$userId';
-  /// ```
+  /// > **Important:** the default key is shared by every instance of the same
+  /// > type. For a *parameterized* shard — same type, different inputs — this
+  /// > means two instances would read and write the same cache entry and serve
+  /// > each other's data. Always override [cacheKey] to include the parameters
+  /// > that distinguish one instance from another:
+  /// >
+  /// > ```dart
+  /// > @override
+  /// > String get cacheKey => 'user_$userId';
+  /// > ```
+  /// >
+  /// > The default also relies on `runtimeType.toString()`, which is not stable
+  /// > under release-build obfuscation/tree-shaking. If a shard's cache must
+  /// > survive obfuscation, override [cacheKey] with an explicit literal.
   String get cacheKey => runtimeType.toString();
 
   /// The time-to-live duration for cached data.
@@ -183,6 +192,9 @@ abstract class FutureShard<T> extends Shard<AsyncValue<T>> {
   @mustCallSuper
   void onInit() {
     super.onInit();
+    // Mark the initial fetch as in-progress so a [refresh] triggered before it
+    // completes is ignored instead of racing a second concurrent [build].
+    _isRefreshing = true;
     _fetch();
   }
 

@@ -1,4 +1,4 @@
-## 1.1.0
+## 1.2.0
 
 * **New**: `LoggingObserver` — a `ShardObserver` subclass that logs state changes and errors via `dart:developer.log(name: 'shard')` for DevTools integration. Defaults to `kDebugMode` so it's inert in release builds. Configurable `printer`, `shouldLog` predicate, `includeStackTrace`, and independent toggles for `logChanges` / `logErrors`.
 * **New**: `package:shard/shard_test.dart` — a separate public entry point for test utilities. Production builds do not link this code.
@@ -7,7 +7,19 @@
   * `FakeStateStorage` and `FakeCacheService` — in-memory implementations of the `StateStorage` / `CacheService` interfaces with failure injection, latency simulation, and call inspection.
   * `MockShardObserver` (plus `ObservedChange<T>` / `ObservedError` records) with a `scope` helper that safely installs/restores the global `Shard.observer` in a `finally` block.
   * `ShardAssertionError` / `ShardTimeoutError` — the error types `ShardTester` throws on failure.
+* **New**: `deepEquals(a, b)` — structural equality for `List` / `Set` / `Map` / `Iterable` (recursive), with a `==` fallback for scalars. Useful in `buildWhen` / `listenWhen`, inside a `ShardSelector`, or anywhere collection-aware comparison helps.
+* **New**: `DeepEqualityMixin<T>` — a `Shard` mixin that makes `emit` dedupe state with `deepEquals` instead of `==`, so rebuilding a collection with identical contents no longer notifies listeners.
+* **New**: `MemoryCacheService` memory bounding:
+  * `maxEntries` — caps the number of retained entries (default `null`, unbounded); the oldest entries are evicted on `write` once the limit is exceeded.
+  * `evictExpired()` — removes all expired entries on demand and returns the count removed.
+  * `entryCount` — the number of entries currently held.
+  * `read` still returns expired entries, so stale-while-revalidate flows (`CacheMixin`'s `onErrorReturnOldCache`) keep working.
+* **New**: `CacheMixin.logCacheEvents` and `CacheMixin.onCacheLog(message)` — toggle cache logging and redirect log lines (to a custom logger, a test recorder, etc.). The default sink is `dart:developer.log(name: 'shard.cache')`.
 * **Fix**: `StatePersistenceMixin.disposePersistenceIfEnabled` previously reset `_saveQueue` to a fresh future and then called `saveState()`, which short-circuited because `_isDisposed` was already true. As a result, a pending debounced save was silently dropped on disposal. Disposal now flushes the final write by chaining it onto the existing save queue and bypassing the `isDisposed` guard.
+* **Fix**: `ShardSelector` now rebuilds correctly when the selected value is `null`. Previously a selector returning `null` (for example selecting a nullable field) left the widget stuck on `SizedBox.shrink()` and never invoked `builder`.
+* **Fix**: `ShardBuilder` and `ShardSelector` now rebind their listener when a different instance is supplied to the `shard:` parameter (via `didUpdateWidget`). Previously they kept listening to the originally-provided instance.
+* **Fix**: `FutureShard` no longer starts a second concurrent `build()` when `refresh()` is called while the initial fetch is still in flight. The initial fetch now participates in the same in-progress guard as `refresh()`.
+* **Fix**: `CacheMixin` no longer logs in release builds. Cache hit/miss/error logging is gated behind the new `logCacheEvents` getter (defaults to `kDebugMode`), so cache keys — which may contain user identifiers — are not emitted to release logs.
 
 ## 1.0.1
 
