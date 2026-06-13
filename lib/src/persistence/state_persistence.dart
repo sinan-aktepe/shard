@@ -221,6 +221,29 @@ mixin StatePersistenceMixin<T, K> on Shard<T> {
     _saveQueue = Future.value();
   }
 
+  /// Clears this shard's persisted slice from storage (e.g. on logout).
+  ///
+  /// Cancels any pending debounced auto-save, then deletes the stored value
+  /// via [StateStorage.delete], chained onto the save queue so it cannot race
+  /// a previously queued write. A subsequent [loadState] calls [onLoadComplete]
+  /// with `null` (no data). Delete failures are routed to [onSaveError].
+  ///
+  /// This does NOT change the in-memory state — pair it with
+  /// `emit(initialState)` if you also want to reset the live state.
+  Future<void> clearPersistence() async {
+    final config = _persistenceConfig;
+    if (config == null) return;
+    cancelDebounce(_autoSaveDebounceKey);
+    _saveQueue = _saveQueue.then((_) async {
+      try {
+        await config.storage.delete(config.key);
+      } catch (error, stackTrace) {
+        config.onSaveError?.call(error, stackTrace);
+      }
+    });
+    return _saveQueue;
+  }
+
   /// Manually saves the current state to storage.
   ///
   /// This method is automatically called by auto-save, but can also

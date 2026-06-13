@@ -159,4 +159,97 @@ void main() {
       expect(storage.rawValue('k'), '42');
     });
   });
+
+  test('clearPersistence deletes the stored value', () {
+    fakeAsync((async) {
+      final storage = FakeStateStorage(initialData: {'k': '5'});
+      final shard = _MyShard();
+      shard.enablePersistence(
+        key: 'k',
+        storage: storage,
+        serializer: const IntSerializer(),
+        toPersistence: (s) => s,
+        autoLoad: false,
+      );
+      shard.clearPersistence();
+      async.flushMicrotasks();
+      expect(storage.rawValue('k'), isNull);
+      expect(storage.deletedKeys, contains('k'));
+      shard.disablePersistence();
+      shard.dispose();
+    });
+  });
+
+  test('loadState after clearPersistence calls onLoadComplete with null', () {
+    fakeAsync((async) {
+      final storage = FakeStateStorage(initialData: {'k': '5'});
+      final shard = _MyShard();
+      int? loaded;
+      var called = false;
+      shard.enablePersistence(
+        key: 'k',
+        storage: storage,
+        serializer: const IntSerializer(),
+        toPersistence: (s) => s,
+        autoLoad: false,
+        onLoadComplete: (d) {
+          called = true;
+          loaded = d;
+        },
+      );
+      shard.clearPersistence();
+      async.flushMicrotasks();
+      shard.loadState();
+      async.flushMicrotasks();
+      expect(called, isTrue);
+      expect(loaded, isNull);
+      shard.disablePersistence();
+      shard.dispose();
+    });
+  });
+
+  test('clearPersistence cancels a pending debounced save', () {
+    fakeAsync((async) {
+      final storage = FakeStateStorage(initialData: {'k': '9'});
+      final shard = _MyShard();
+      shard.enablePersistence(
+        key: 'k',
+        storage: storage,
+        serializer: const IntSerializer(),
+        toPersistence: (s) => s,
+        autoLoad: false,
+        debounceDuration: const Duration(milliseconds: 50),
+      );
+      shard.setTo(3); // schedules a debounced save of 3
+      shard.clearPersistence(); // cancels the debounce, queues the delete
+      async.elapse(const Duration(milliseconds: 100));
+      async.flushMicrotasks();
+      expect(storage.rawValue('k'), isNull); // delete won; no stale '3' written
+      shard.disablePersistence();
+      shard.dispose();
+    });
+  });
+
+  test('clearPersistence routes delete errors to onSaveError', () {
+    fakeAsync((async) {
+      final storage = FakeStateStorage(initialData: {'k': '5'})
+        ..deleteError = Exception('delete failed');
+      final shard = _MyShard();
+      Object? captured;
+      shard.enablePersistence(
+        key: 'k',
+        storage: storage,
+        serializer: const IntSerializer(),
+        toPersistence: (s) => s,
+        autoLoad: false,
+        onSaveError: (e, st) => captured = e,
+      );
+      shard.clearPersistence();
+      async.flushMicrotasks();
+      expect(captured, isA<Exception>());
+      expect(storage.rawValue('k'), '5'); // delete threw; value remains
+      shard.disablePersistence();
+      shard.dispose();
+    });
+  });
 }
