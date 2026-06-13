@@ -95,5 +95,35 @@ void main() {
       expect(storage.saveDelay, isNull);
       expect(await storage.load('k'), isNull);
     });
+
+    test('delete removes the key and a subsequent load returns null', () async {
+      final storage = FakeStateStorage(initialData: {'k': 'v'});
+      await storage.delete('k');
+      expect(await storage.load('k'), isNull);
+      expect(storage.hasKey('k'), isFalse);
+      expect(storage.deleteCount, 1);
+      expect(storage.deletedKeys, ['k']);
+    });
+
+    test('delete of a missing key is a no-op (still counted)', () async {
+      final storage = FakeStateStorage();
+      await storage.delete('absent');
+      expect(storage.deleteCount, 1);
+    });
+
+    test('delete throws when deleteError is set and leaves data intact', () async {
+      final storage = FakeStateStorage(initialData: {'k': 'v'})
+        ..deleteError = Exception('boom');
+      await expectLater(storage.delete('k'), throwsException);
+      expect(storage.rawValue('k'), 'v');
+    });
+
+    test('reset clears delete counters', () async {
+      final storage = FakeStateStorage(initialData: {'k': 'v'});
+      await storage.delete('k');
+      storage.reset();
+      expect(storage.deleteCount, 0);
+      expect(storage.deletedKeys, isEmpty);
+    });
   });
 }

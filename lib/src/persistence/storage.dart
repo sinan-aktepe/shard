@@ -38,6 +38,11 @@
 ///   Future<String?> load(String key) async {
 ///     return _prefs.getString(key);
 ///   }
+///
+///   @override
+///   Future<void> delete(String key) async {
+///     await _prefs.remove(key);
+///   }
 /// }
 /// ```
 ///
@@ -77,4 +82,12 @@ abstract class StateStorage {
   ///
   /// Throws an exception if the load operation fails.
   Future<String?> load(String key);
+
+  /// Removes any value stored under [key].
+  ///
+  /// A no-op if the key is absent. After this completes, a subsequent [load]
+  /// for the same [key] must return `null`.
+  ///
+  /// Throws an exception if the delete operation fails.
+  Future<void> delete(String key);
 }

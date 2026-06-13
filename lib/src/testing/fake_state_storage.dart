@@ -18,6 +18,7 @@ class FakeStateStorage implements StateStorage {
 
   final Map<String, String> _data = {};
   final List<String> _savedKeys = [];
+  final List<String> _deletedKeys = [];
 
   /// If non-null, [load] throws this object instead of returning a value.
   Object? loadError;
@@ -29,11 +30,17 @@ class FakeStateStorage implements StateStorage {
   /// are NOT updated.
   Object? saveError;
 
+  /// If non-null, [delete] throws this object instead of removing the key.
+  Object? deleteError;
+
   /// If non-null, [load] awaits this duration before completing.
   Duration? loadDelay;
 
   /// If non-null, [save] awaits this duration before completing.
   Duration? saveDelay;
+
+  /// If non-null, [delete] awaits this duration before completing.
+  Duration? deleteDelay;
 
   /// Total number of [load] calls since construction (or last [reset]).
   int loadCount = 0;
@@ -41,8 +48,14 @@ class FakeStateStorage implements StateStorage {
   /// Total number of [save] calls since construction (or last [reset]).
   int saveCount = 0;
 
+  /// Total number of [delete] calls since construction (or last [reset]).
+  int deleteCount = 0;
+
   /// All keys passed to [save], in order, including duplicates.
   List<String> get savedKeys => List.unmodifiable(_savedKeys);
+
+  /// All keys passed to [delete], in order, including duplicates.
+  List<String> get deletedKeys => List.unmodifiable(_deletedKeys);
 
   /// An unmodifiable view of the underlying key→value map.
   Map<String, String> get data => Map.unmodifiable(_data);
@@ -71,12 +84,16 @@ class FakeStateStorage implements StateStorage {
   void reset() {
     _data.clear();
     _savedKeys.clear();
+    _deletedKeys.clear();
     loadCount = 0;
     saveCount = 0;
+    deleteCount = 0;
     loadError = null;
     saveError = null;
+    deleteError = null;
     loadDelay = null;
     saveDelay = null;
+    deleteDelay = null;
   }
 
   @override
@@ -94,5 +111,14 @@ class FakeStateStorage implements StateStorage {
     if (loadDelay != null) await Future<void>.delayed(loadDelay!);
     if (loadError != null) throw loadError!;
     return _data[key];
+  }
+
+  @override
+  Future<void> delete(String key) async {
+    deleteCount++;
+    _deletedKeys.add(key);
+    if (deleteDelay != null) await Future<void>.delayed(deleteDelay!);
+    if (deleteError != null) throw deleteError!;
+    _data.remove(key);
   }
 }
