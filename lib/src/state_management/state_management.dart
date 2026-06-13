@@ -1,5 +1,6 @@
 export 'async_value.dart';
 export 'command_shard.dart';
+export 'computed_shard.dart';
 export 'debounce_throttle.dart';
 export 'equality.dart';
 export 'future_shard.dart';
