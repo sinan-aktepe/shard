@@ -6,6 +6,7 @@
 * **New**: `Shard.stream` — a lazily-created broadcast `Stream<T>` of state changes (does not replay the current value; closes on dispose). Enables `StreamBuilder`, `await for`, and `emitsInOrder` stream assertions without a dependency.
 * **New**: `computedShard(sources, compute)` and `ComputedShard<T>` — a derived shard that listens to one or more `Listenable` sources and recomputes when any notifies. The function form is the recommended default; the subclass form gives a named type for `ShardProvider`.
 * **New**: `ShardListener` / `MultiShardListener` — listener-only widgets for side effects (navigation, snackbars) that invoke a callback on state changes without rebuilding. `MultiShardListener` nests several via the `SingleChildShardListener` interface, like `MultiShardProvider`.
+* **New**: `HistoryMixin<T>` — adds undo/redo to a `Shard` (`undo()`, `redo()`, `canUndo`, `canRedo`, `clearHistory()`, configurable `maxHistory`). Records via `onChange` and restores via `setStateInternal`, so restores notify listeners/observers without being re-recorded.
 * **New**: `AsyncValue.when` / `maybeWhen` — exhaustive and partial pattern matching over idle/loading/data/error (loading and error receive `previousData`).
 * **New**: `AsyncValue.mapData` / `whenData` — transform or read the success value while preserving the variant.
 * **New**: `AsyncValue.guard(future, {previousData})` — runs a future and captures the outcome as `AsyncData`/`AsyncError`.
