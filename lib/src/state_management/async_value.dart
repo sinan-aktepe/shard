@@ -43,6 +43,58 @@ sealed class AsyncValue<T> {
   /// Returns the stack trace if this is an [AsyncError], otherwise null.
   StackTrace? get stackTraceOrNull =>
       this is AsyncError<T> ? (this as AsyncError<T>).stackTrace : null;
+
+  /// Exhaustively pattern-matches over every [AsyncValue] state.
+  ///
+  /// Every branch is required, so the compiler enforces exhaustiveness.
+  /// [loading] and [error] receive the previous data (if any) so callers can
+  /// render stale content while refreshing.
+  ///
+  /// ```dart
+  /// final text = state.when(
+  ///   idle: () => 'Tap to load',
+  ///   loading: (prev) => prev == null ? 'Loading…' : 'Refreshing…',
+  ///   data: (value) => 'Value: $value',
+  ///   error: (e, _, __) => 'Failed: $e',
+  /// );
+  /// ```
+  R when<R>({
+    required R Function() idle,
+    required R Function(T? previousData) loading,
+    required R Function(T data) data,
+    required R Function(Object error, StackTrace? stackTrace, T? previousData)
+    error,
+  }) => switch (this) {
+    AsyncIdle<T>() => idle(),
+    AsyncLoading<T>(:final previousData) => loading(previousData),
+    AsyncData<T>(data: final value) => data(value),
+    AsyncError<T>(error: final err, stackTrace: final st, previousData: final prev) =>
+      error(err, st, prev),
+  };
+
+  /// Partial pattern-match with a required [orElse] fallback for any state
+  /// whose handler is omitted (or null).
+  ///
+  /// ```dart
+  /// final canSubmit = state.maybeWhen(
+  ///   data: (_) => true,
+  ///   orElse: () => false,
+  /// );
+  /// ```
+  R maybeWhen<R>({
+    R Function()? idle,
+    R Function(T? previousData)? loading,
+    R Function(T data)? data,
+    R Function(Object error, StackTrace? stackTrace, T? previousData)? error,
+    required R Function() orElse,
+  }) => switch (this) {
+    AsyncIdle<T>() => idle != null ? idle() : orElse(),
+    AsyncLoading<T>(:final previousData) =>
+      loading != null ? loading(previousData) : orElse(),
+    AsyncData<T>(data: final value) => data != null ? data(value) : orElse(),
+    AsyncError<T>(error: final err, stackTrace: final st, previousData: final prev) =>
+      error != null ? error(err, st, prev) : orElse(),
+  };
 }
 
 /// Represents the initial, not-yet-started state of an asynchronous operation.

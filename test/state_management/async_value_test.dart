@@ -130,4 +130,47 @@ void main() {
     expect(const AsyncData<int>(1).isIdle, isFalse);
     expect(const AsyncError<int>('e').isIdle, isFalse);
   });
+
+  group('when', () {
+    String label(AsyncValue<int> v) => v.when(
+      idle: () => 'idle',
+      loading: (prev) => 'loading:$prev',
+      data: (d) => 'data:$d',
+      error: (e, st, prev) => 'error:$e:$prev',
+    );
+
+    test('routes idle', () {
+      expect(label(const AsyncIdle<int>()), 'idle');
+    });
+
+    test('routes loading with previousData', () {
+      expect(label(const AsyncLoading<int>(previousData: 7)), 'loading:7');
+    });
+
+    test('routes data', () {
+      expect(label(const AsyncData<int>(42)), 'data:42');
+    });
+
+    test('routes error with previousData', () {
+      expect(label(const AsyncError<int>('boom', null, 3)), 'error:boom:3');
+    });
+  });
+
+  group('maybeWhen', () {
+    test('falls through to orElse when the matching handler is null', () {
+      final r = const AsyncData<int>(1).maybeWhen(
+        loading: (_) => 'loading',
+        orElse: () => 'else',
+      );
+      expect(r, 'else');
+    });
+
+    test('uses the matching handler when provided', () {
+      final r = const AsyncData<int>(1).maybeWhen(
+        data: (d) => 'data:$d',
+        orElse: () => 'else',
+      );
+      expect(r, 'data:1');
+    });
+  });
 }
