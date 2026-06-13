@@ -1,20 +1,37 @@
 ## 2.0.0-dev.1
 
-* **BREAKING CHANGE**: `StateStorage` gains a required `delete(String key)` method (per-key removal). Custom `StateStorage` implementations must add it — e.g. `await prefs.remove(key)` / `await box.delete(key)`. The bundled `FakeStateStorage` implements it.
-* **BREAKING CHANGE**: `AsyncValue<T>` gained a fourth state, `AsyncIdle<T>` (the not-yet-started state). Any exhaustive `switch` over an `AsyncValue` must now handle `AsyncIdle` (or migrate to `when`). `FutureShard`/`StreamShard` are unaffected (they begin loading); `AsyncShardBuilder` adds an optional `onIdle:` builder that defaults to the loading widget, so existing call sites keep working.
-* **New**: `StreamShard.pause()` / `resume()` / `isPaused` — pause and resume the underlying stream subscription (e.g. while a screen is backgrounded). Events are buffered while paused per `StreamSubscription` semantics.
-* **New**: `Shard.stream` — a lazily-created broadcast `Stream<T>` of state changes (does not replay the current value; closes on dispose). Enables `StreamBuilder`, `await for`, and `emitsInOrder` stream assertions without a dependency.
-* **New**: `computedShard(sources, compute)` and `ComputedShard<T>` — a derived shard that listens to one or more `Listenable` sources and recomputes when any notifies. The function form is the recommended default; the subclass form gives a named type for `ShardProvider`.
-* **New**: `ShardListener` / `MultiShardListener` — listener-only widgets for side effects (navigation, snackbars) that invoke a callback on state changes without rebuilding. `MultiShardListener` nests several via the `SingleChildShardListener` interface, like `MultiShardProvider`.
-* **New**: `HistoryMixin<T>` — adds undo/redo to a `Shard` (`undo()`, `redo()`, `canUndo`, `canRedo`, `clearHistory()`, configurable `maxHistory`). Records via `onChange` and restores via `setStateInternal`, so restores notify listeners/observers without being re-recorded.
-* **New**: Persistence `flushOnPause` — `enablePersistence` and `PersistentShard`/`SimplePersistentShard` accept `flushOnPause` (default false). When enabled, a `WidgetsBindingObserver` flushes a save on `AppLifecycleState.paused`/`detached`, so a backgrounded app doesn't lose the last change inside the debounce window. The observer is removed on `disablePersistence`/dispose.
+First 2.x development release. Three breaking changes (all with a clear migration path — see [docs/superpowers/specs/2026-06-13-shard-2.0-migration.md](docs/superpowers/specs/2026-06-13-shard-2.0-migration.md)) plus a wave of additive features. The "zero runtime dependencies" guarantee is unchanged.
+
+### Breaking changes
+
+* **BREAKING**: `AsyncValue<T>` gained a fourth state, `AsyncIdle<T>` (the not-yet-started state). Any exhaustive `switch` over an `AsyncValue` in your code must now handle `AsyncIdle` (or switch to the new `when`/`maybeWhen`). `FutureShard`/`StreamShard` are unaffected (they begin loading), and `AsyncShardBuilder` keeps working via a new optional `onIdle:` builder that defaults to the loading widget.
+* **BREAKING**: `StateStorage` gains a required `delete(String key)` method (per-key removal). Custom `StateStorage` implementations must add it — e.g. `await prefs.remove(key)` / `await box.delete(key)`. The bundled `FakeStateStorage` implements it.
+* **BREAKING**: persisted state is now stored in a version envelope (`{"__shard_v":N,"__shard_p":"…"}`) instead of the bare payload. Reads are legacy-tolerant — data written by 1.x is treated as version 1 — so **upgrades keep their data**. Only a 2.0→1.x *downgrade* cannot read 2.0-written data.
+
+### Async (`AsyncValue` / commands)
+
 * **New**: `AsyncValue.when` / `maybeWhen` — exhaustive and partial pattern matching over idle/loading/data/error (loading and error receive `previousData`).
 * **New**: `AsyncValue.mapData` / `whenData` — transform or read the success value while preserving the variant.
 * **New**: `AsyncValue.guard(future, {previousData})` — runs a future and captures the outcome as `AsyncData`/`AsyncError`.
 * **New**: `AsyncShardBuilder.onIdle` — optional builder for the idle state.
-* **New**: `CommandShard<Arg, Res>` — a `Shard<AsyncValue<Res>>` for one-shot async actions (form submit, create/update/delete). Starts in `AsyncIdle`; `execute(arg)` runs the action (`AsyncLoading` → `AsyncData`/`AsyncError`) with a double-submit guard and dispose-safety, and returns the result or null. `reset()` returns to idle. Renders with `AsyncShardBuilder` via `onIdle:`.
+* **New**: `CommandShard<Arg, Res>` — a `Shard<AsyncValue<Res>>` for one-shot async actions (form submit, create/update/delete). Starts in `AsyncIdle`; `execute(arg)` runs the action (`AsyncLoading` → `AsyncData`/`AsyncError`) with a double-submit guard and dispose-safety, returning the result or null. `reset()` returns to idle. Renders with `AsyncShardBuilder` via `onIdle:`.
+
+### Shards & composition
+
+* **New**: `computedShard(sources, compute)` and `ComputedShard<T>` — a derived shard that listens to one or more `Listenable` sources and recomputes when any notifies. The function form is the recommended default; the subclass form gives a named type for `ShardProvider`.
+* **New**: `HistoryMixin<T>` — undo/redo for a `Shard` (`undo()`, `redo()`, `canUndo`, `canRedo`, `clearHistory()`, configurable `maxHistory`). Records via `onChange` and restores via `setStateInternal`, so restores notify listeners/observers without being re-recorded.
+* **New**: `Shard.stream` — a lazily-created broadcast `Stream<T>` of state changes (does not replay the current value; closes on dispose). Enables `StreamBuilder`, `await for`, and `emitsInOrder` stream assertions without a dependency.
+* **New**: `StreamShard.pause()` / `resume()` / `isPaused` — pause and resume the underlying stream subscription (e.g. while a screen is backgrounded). Events are buffered while paused per `StreamSubscription` semantics.
+
+### Widgets
+
+* **New**: `ShardListener` / `MultiShardListener` — listener-only widgets for side effects (navigation, snackbars) that invoke a callback on state changes without rebuilding. `MultiShardListener` nests several via the `SingleChildShardListener` interface, like `MultiShardProvider`.
+
+### Persistence
+
 * **New**: `StatePersistenceMixin.clearPersistence()` (inherited by `PersistentShard`) — deletes this shard's persisted slice via `StateStorage.delete` (cancelling any pending debounced save), for logout/wipe flows. Leaves in-memory state untouched.
-* **New**: Persistence schema versioning — `enablePersistence` and `PersistentShard`/`SimplePersistentShard` accept `version` (default 1) and `migrate(fromVersion, payload)`. State is now stored in a version envelope (`{"__shard_v":N,"__shard_p":"…"}`). Reads are legacy-tolerant: bare data written by 1.x is treated as version 1, so upgrading apps keep their persisted data. `migrate` runs once when the stored version is older than `version`. (A 2.0→1.x *downgrade* cannot read 2.0-written data.)
+* **New**: schema versioning — `enablePersistence` and `PersistentShard`/`SimplePersistentShard` accept `version` (default 1) and `migrate(fromVersion, payload)`. `migrate` runs once when the stored version is older than `version`; it owns chaining intermediate migrations.
+* **New**: `flushOnPause` — `enablePersistence` and `PersistentShard`/`SimplePersistentShard` accept `flushOnPause` (default false). When enabled, a `WidgetsBindingObserver` flushes a save on `AppLifecycleState.paused`/`detached`, so a backgrounded app doesn't lose the last change inside the debounce window. The observer is removed on `disablePersistence`/dispose.
 
 ## 1.2.0
 
