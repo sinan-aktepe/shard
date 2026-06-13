@@ -69,6 +69,31 @@ void main() {
       expect(c.state, isA<AsyncIdle<int>>());
     });
 
+    test('re-run carries previous result as previousData on loading/error',
+        () async {
+      var fail = false;
+      final err = Exception('second-run boom');
+      final c = CommandShard<int, int>((a) async {
+        if (fail) throw err;
+        return a;
+      });
+      addTearDown(c.dispose);
+
+      await c.execute(10);
+      expect(c.state, const AsyncData<int>(10));
+
+      // Second run fails; loading and the resulting error should retain 10.
+      fail = true;
+      final tester = ShardTester<AsyncValue<int>>(c);
+      final result = await c.execute(20);
+      expect(result, isNull);
+      await tester.expectStates([
+        const AsyncLoading<int>(previousData: 10),
+      ]);
+      expect(c.state, isA<AsyncError<int>>());
+      expect((c.state as AsyncError<int>).previousData, 10);
+    });
+
     test('dispose mid-run does not emit after dispose', () async {
       final gate = Completer<int>();
       final c = CommandShard<void, int>((_) async => gate.future);

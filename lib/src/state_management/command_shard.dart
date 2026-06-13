@@ -43,7 +43,8 @@ class CommandShard<Arg, Res> extends Shard<AsyncValue<Res>> {
   /// Whether the action is currently running.
   bool get isRunning => state.isLoading;
 
-  /// The result of the last successful run, or null.
+  /// The current result if the last run succeeded; null when idle, running,
+  /// errored, or after [reset].
   Res? get valueOrNull => state.dataOrNull;
 
   /// Runs the action with [arg].
@@ -65,11 +66,13 @@ class CommandShard<Arg, Res> extends Shard<AsyncValue<Res>> {
     } catch (e, st) {
       if (isDisposed) return null;
       addError(e, st);
+      // `state` is still AsyncLoading here, so dataOrNull returns the pre-run
+      // value — exactly the previousData we want to carry onto the error.
       emit(AsyncError<Res>(e, st, state.dataOrNull));
       return null;
     }
   }
 
-  /// Resets the command back to [AsyncIdle].
+  /// Resets the command back to [AsyncIdle]. After this, [valueOrNull] is null.
   void reset() => emit(AsyncIdle<Res>());
 }
