@@ -8,6 +8,7 @@
 * **New**: `AsyncShardBuilder.onIdle` — optional builder for the idle state.
 * **New**: `CommandShard<Arg, Res>` — a `Shard<AsyncValue<Res>>` for one-shot async actions (form submit, create/update/delete). Starts in `AsyncIdle`; `execute(arg)` runs the action (`AsyncLoading` → `AsyncData`/`AsyncError`) with a double-submit guard and dispose-safety, and returns the result or null. `reset()` returns to idle. Renders with `AsyncShardBuilder` via `onIdle:`.
 * **New**: `StatePersistenceMixin.clearPersistence()` (inherited by `PersistentShard`) — deletes this shard's persisted slice via `StateStorage.delete` (cancelling any pending debounced save), for logout/wipe flows. Leaves in-memory state untouched.
+* **New**: Persistence schema versioning — `enablePersistence` and `PersistentShard`/`SimplePersistentShard` accept `version` (default 1) and `migrate(fromVersion, payload)`. State is now stored in a version envelope (`{"__shard_v":N,"__shard_p":"…"}`). Reads are legacy-tolerant: bare data written by 1.x is treated as version 1, so upgrading apps keep their persisted data. `migrate` runs once when the stored version is older than `version`. (A 2.0→1.x *downgrade* cannot read 2.0-written data.)
 
 ## 1.2.0
 
