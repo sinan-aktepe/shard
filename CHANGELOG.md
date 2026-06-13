@@ -1,6 +1,10 @@
 ## 2.0.0-dev.1
 
-* _In development — entries are added per feature and compacted before release. See `docs/superpowers/specs/2026-06-13-shard-2.0-design.md`._
+* **BREAKING CHANGE**: `AsyncValue<T>` gained a fourth state, `AsyncIdle<T>` (the not-yet-started state). Any exhaustive `switch` over an `AsyncValue` must now handle `AsyncIdle` (or migrate to `when`). `FutureShard`/`StreamShard` are unaffected (they begin loading); `AsyncShardBuilder` adds an optional `onIdle:` builder that defaults to the loading widget, so existing call sites keep working.
+* **New**: `AsyncValue.when` / `maybeWhen` — exhaustive and partial pattern matching over idle/loading/data/error (loading and error receive `previousData`).
+* **New**: `AsyncValue.mapData` / `whenData` — transform or read the success value while preserving the variant.
+* **New**: `AsyncValue.guard(future, {previousData})` — runs a future and captures the outcome as `AsyncData`/`AsyncError`.
+* **New**: `AsyncShardBuilder.onIdle` — optional builder for the idle state.
 
 ## 1.2.0
 
