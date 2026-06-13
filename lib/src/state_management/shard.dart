@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'debounce_throttle.dart';
 import 'shard_observer.dart';
@@ -69,6 +71,7 @@ abstract class Shard<T> extends ChangeNotifier
     with DebounceMixin, ThrottleMixin {
   bool _isDisposed = false;
   T _state;
+  StreamController<T>? _streamController;
 
   /// Global observer for all [Shard] instances.
   ///
@@ -100,6 +103,28 @@ abstract class Shard<T> extends ChangeNotifier
   ///
   /// This is a read-only property. Use [emit] to update the state.
   T get state => _state;
+
+  void _forwardStateToStream() => _streamController?.add(state);
+
+  /// A broadcast [Stream] of state changes.
+  ///
+  /// Emits each new state right after it is set. It does **not** replay the
+  /// current state to new listeners — read [state] for that. The controller is
+  /// created lazily on first access and closed when the shard is disposed.
+  ///
+  /// Handy for `StreamBuilder`, `await for`, stream combinators, and
+  /// `expectLater(..., emitsInOrder([...]))` in tests.
+  ///
+  /// ```dart
+  /// final sub = shard.stream.listen((state) => print('changed: $state'));
+  /// ```
+  Stream<T> get stream {
+    if (_streamController == null) {
+      _streamController = StreamController<T>.broadcast();
+      addListener(_forwardStateToStream);
+    }
+    return _streamController!.stream;
+  }
 
   /// Internal method for setting state directly.
   ///
@@ -292,6 +317,13 @@ abstract class Shard<T> extends ChangeNotifier
 
     // Clean up persistence if StatePersistenceMixin is used
     disposePersistenceIfEnabled();
+
+    // Close the state stream if it was ever created.
+    if (_streamController != null) {
+      removeListener(_forwardStateToStream);
+      _streamController!.close();
+      _streamController = null;
+    }
 
     super.dispose();
   }

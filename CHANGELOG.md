@@ -3,6 +3,7 @@
 * **BREAKING CHANGE**: `StateStorage` gains a required `delete(String key)` method (per-key removal). Custom `StateStorage` implementations must add it — e.g. `await prefs.remove(key)` / `await box.delete(key)`. The bundled `FakeStateStorage` implements it.
 * **BREAKING CHANGE**: `AsyncValue<T>` gained a fourth state, `AsyncIdle<T>` (the not-yet-started state). Any exhaustive `switch` over an `AsyncValue` must now handle `AsyncIdle` (or migrate to `when`). `FutureShard`/`StreamShard` are unaffected (they begin loading); `AsyncShardBuilder` adds an optional `onIdle:` builder that defaults to the loading widget, so existing call sites keep working.
 * **New**: `StreamShard.pause()` / `resume()` / `isPaused` — pause and resume the underlying stream subscription (e.g. while a screen is backgrounded). Events are buffered while paused per `StreamSubscription` semantics.
+* **New**: `Shard.stream` — a lazily-created broadcast `Stream<T>` of state changes (does not replay the current value; closes on dispose). Enables `StreamBuilder`, `await for`, and `emitsInOrder` stream assertions without a dependency.
 * **New**: `AsyncValue.when` / `maybeWhen` — exhaustive and partial pattern matching over idle/loading/data/error (loading and error receive `previousData`).
 * **New**: `AsyncValue.mapData` / `whenData` — transform or read the success value while preserving the variant.
 * **New**: `AsyncValue.guard(future, {previousData})` — runs a future and captures the outcome as `AsyncData`/`AsyncError`.

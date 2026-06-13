@@ -90,4 +90,41 @@ void main() {
       });
     });
   });
+
+  group('stream', () {
+    test('emits each post-subscription state in order', () async {
+      final shard = _CounterShard();
+      addTearDown(shard.dispose);
+      final expectation = expectLater(shard.stream, emitsInOrder([1, 2, 3]));
+      shard.setTo(1);
+      shard.setTo(2);
+      shard.setTo(3);
+      await expectation;
+    });
+
+    test('does not replay the current state to a new listener', () async {
+      final shard = _CounterShard();
+      addTearDown(shard.dispose);
+      shard.setTo(5); // before any subscription
+      final expectation = expectLater(shard.stream, emitsInOrder([6]));
+      shard.setTo(6);
+      await expectation;
+    });
+
+    test('closes on dispose', () async {
+      final shard = _CounterShard();
+      final expectation = expectLater(shard.stream, emitsDone);
+      shard.dispose();
+      await expectation;
+    });
+
+    test('is broadcast: multiple listeners receive events', () async {
+      final shard = _CounterShard();
+      addTearDown(shard.dispose);
+      final a = expectLater(shard.stream, emits(1));
+      final b = expectLater(shard.stream, emits(1));
+      shard.setTo(1);
+      await Future.wait([a, b]);
+    });
+  });
 }
