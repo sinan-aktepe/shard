@@ -1,5 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
+
+import 'package:flutter/widgets.dart';
+
 import '../state_management/shard.dart';
 import 'storage.dart';
 import 'serializer.dart';
@@ -57,6 +60,9 @@ class PersistenceConfig<T, K> {
   /// the function is responsible for chaining intermediate migrations.
   final String Function(int fromVersion, String payload)? migrate;
 
+  /// Whether to flush a save when the app is paused or detached.
+  final bool flushOnPause;
+
   /// Creates a new persistence configuration.
   PersistenceConfig({
     required this.key,
@@ -71,6 +77,7 @@ class PersistenceConfig<T, K> {
     this.onLoadComplete,
     this.version = 1,
     this.migrate,
+    this.flushOnPause = false,
   });
 }
 
@@ -146,6 +153,7 @@ mixin StatePersistenceMixin<T, K> on Shard<T> {
   PersistenceConfig<T, K>? _persistenceConfig;
   bool _isLoading = false;
   Future<void> _saveQueue = Future.value();
+  _ShardLifecycleObserver? _lifecycleObserver;
 
   @override
   void emit(T newState) {
@@ -186,6 +194,9 @@ mixin StatePersistenceMixin<T, K> on Shard<T> {
   /// - [version] - Current schema version stored in the envelope (default: 1)
   /// - [migrate] - Migrates an older stored payload to [version]; called once
   ///   with the stored version when it is older than [version]
+  /// - [flushOnPause] - When true, registers a `WidgetsBindingObserver` that
+  ///   flushes [saveState] when the app is paused or detached (default: false;
+  ///   requires an initialized `WidgetsBinding`)
   ///
   /// ```dart
   /// @override
@@ -216,6 +227,7 @@ mixin StatePersistenceMixin<T, K> on Shard<T> {
     void Function(K? data)? onLoadComplete,
     int version = 1,
     String Function(int fromVersion, String payload)? migrate,
+    bool flushOnPause = false,
   }) {
     assert(
       migrate == null || version > 1,
@@ -240,11 +252,28 @@ mixin StatePersistenceMixin<T, K> on Shard<T> {
       onLoadComplete: onLoadComplete,
       version: version,
       migrate: migrate,
+      flushOnPause: flushOnPause,
     );
+
+    // Register a lifecycle observer to flush on pause/detach, if requested.
+    if (flushOnPause) {
+      _lifecycleObserver = _ShardLifecycleObserver(() {
+        if (!isDisposed) saveState();
+      });
+      WidgetsBinding.instance.addObserver(_lifecycleObserver!);
+    }
+
     // Auto-load if enabled
     if (autoLoad) {
       // loadState() handles errors internally and calls onLoadError callback
       loadState();
+    }
+  }
+
+  void _removeLifecycleObserver() {
+    if (_lifecycleObserver != null) {
+      WidgetsBinding.instance.removeObserver(_lifecycleObserver!);
+      _lifecycleObserver = null;
     }
   }
 
@@ -256,6 +285,7 @@ mixin StatePersistenceMixin<T, K> on Shard<T> {
     _persistenceConfig = null;
     cancelDebounce(_autoSaveDebounceKey);
     _saveQueue = Future.value();
+    _removeLifecycleObserver();
   }
 
   /// Clears this shard's persisted slice from storage (e.g. on logout).
@@ -442,6 +472,7 @@ mixin StatePersistenceMixin<T, K> on Shard<T> {
   @override
   void disposePersistenceIfEnabled() {
     cancelDebounce(_autoSaveDebounceKey);
+    _removeLifecycleObserver();
     _isLoading = false;
 
     // If persistence is enabled, flush any pending save before teardown.
@@ -458,6 +489,23 @@ mixin StatePersistenceMixin<T, K> on Shard<T> {
           }
         }
       });
+    }
+  }
+}
+
+/// Internal [WidgetsBindingObserver] that invokes [_onPauseOrDetach] when the
+/// app is paused or detached. Used by [StatePersistenceMixin] when
+/// `flushOnPause` is enabled.
+class _ShardLifecycleObserver extends WidgetsBindingObserver {
+  _ShardLifecycleObserver(this._onPauseOrDetach);
+
+  final void Function() _onPauseOrDetach;
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.detached) {
+      _onPauseOrDetach();
     }
   }
 }

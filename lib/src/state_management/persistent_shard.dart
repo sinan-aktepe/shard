@@ -99,6 +99,7 @@ abstract class PersistentShard<T, K> extends Shard<T>
   final Duration _debounceDuration;
   final int _version;
   final String Function(int fromVersion, String payload)? _migrate;
+  final bool _flushOnPause;
 
   /// Creates a new [PersistentShard] with the given configuration.
   ///
@@ -114,6 +115,7 @@ abstract class PersistentShard<T, K> extends Shard<T>
   /// - [debounceDuration] - Debounce duration for auto-save (default: 500ms)
   /// - [version] - Current schema version stored in the persistence envelope
   /// - [migrate] - Migrates an older stored payload to [version]
+  /// - [flushOnPause] - Flush a save when the app is paused/detached
   PersistentShard(
     super.initialState, {
     StateStorage? storage,
@@ -124,6 +126,7 @@ abstract class PersistentShard<T, K> extends Shard<T>
     Duration debounceDuration = const Duration(milliseconds: 500),
     int version = 1,
     String Function(int fromVersion, String payload)? migrate,
+    bool flushOnPause = false,
   }) : _storage = storage,
        _storageFactory = storageFactory,
        _serializer = serializer,
@@ -132,6 +135,7 @@ abstract class PersistentShard<T, K> extends Shard<T>
        _debounceDuration = debounceDuration,
        _version = version,
        _migrate = migrate,
+       _flushOnPause = flushOnPause,
        super() {
     assert(
       storage != null || storageFactory != null,
@@ -253,6 +257,7 @@ abstract class PersistentShard<T, K> extends Shard<T>
       onLoadComplete: onLoadComplete,
       version: _version,
       migrate: _migrate,
+      flushOnPause: _flushOnPause,
     );
   }
 
@@ -342,6 +347,7 @@ abstract class SimplePersistentShard<T> extends PersistentShard<T, T> {
     super.debounceDuration,
     super.version,
     super.migrate,
+    super.flushOnPause,
   });
 
   /// Returns the state as-is for persistence.
