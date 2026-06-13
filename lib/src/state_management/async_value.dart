@@ -6,7 +6,6 @@
 /// - [AsyncData] - The operation completed successfully with data
 /// - [AsyncError] - The operation failed with an error
 ///
-///
 /// See also:
 /// - [FutureShard] for Future-based async state management
 /// - [StreamShard] for Stream-based async state management
@@ -126,7 +125,7 @@ sealed class AsyncValue<T> {
   /// on throw. Never throws.
   ///
   /// ```dart
-  /// emit(const AsyncLoading());
+  /// emit(const AsyncLoading<User>());
   /// emit(await AsyncValue.guard(() => repository.fetch()));
   /// ```
   static Future<AsyncValue<T>> guard<T>(

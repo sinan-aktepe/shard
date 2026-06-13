@@ -127,6 +127,13 @@ void main() {
     test('toString includes the empty constructor parens', () {
       expect(const AsyncIdle<int>().toString(), 'AsyncIdle<int>()');
     });
+
+    test('AsyncIdle of different types are not equal', () {
+      expect(
+        const AsyncIdle<int>(),
+        isNot(equals(const AsyncIdle<String>())),
+      );
+    });
   });
 
   test('isIdle is false for the other variants', () {
@@ -151,6 +158,10 @@ void main() {
       expect(label(const AsyncLoading<int>(previousData: 7)), 'loading:7');
     });
 
+    test('routes loading with null previousData', () {
+      expect(label(const AsyncLoading<int>()), 'loading:null');
+    });
+
     test('routes data', () {
       expect(label(const AsyncData<int>(42)), 'data:42');
     });
@@ -164,6 +175,14 @@ void main() {
     test('falls through to orElse when the matching handler is null', () {
       final r = const AsyncData<int>(1).maybeWhen(
         loading: (_) => 'loading',
+        orElse: () => 'else',
+      );
+      expect(r, 'else');
+    });
+
+    test('idle falls through to orElse when idle handler is null', () {
+      final r = const AsyncIdle<int>().maybeWhen(
+        data: (d) => 'data:$d',
         orElse: () => 'else',
       );
       expect(r, 'else');
