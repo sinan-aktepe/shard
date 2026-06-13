@@ -1,7 +1,14 @@
+import 'dart:convert';
+
 import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shard/shard.dart';
 import 'package:shard/shard_test.dart';
+
+String? _envPayload(String? raw) =>
+    raw == null ? null : (jsonDecode(raw) as Map)['__shard_p'] as String?;
+int? _envVersion(String? raw) =>
+    raw == null ? null : (jsonDecode(raw) as Map)['__shard_v'] as int?;
 
 class _SimpleCounter extends SimplePersistentShard<int> {
   _SimpleCounter({required FakeStateStorage storage})
@@ -76,7 +83,8 @@ void main() {
       s.inc();
       s.inc();
       async.elapse(const Duration(milliseconds: 600));
-      expect(storage.rawValue('counter'), '2');
+      expect(_envVersion(storage.rawValue('counter')), 1);
+      expect(_envPayload(storage.rawValue('counter')), '2');
       s.dispose();
     });
   });
@@ -91,7 +99,8 @@ void main() {
       s.add('b');
       async.elapse(const Duration(milliseconds: 600));
       // The persisted JSON is the list, not the full state.
-      expect(storage.rawValue('todos'), '["a","b"]');
+      expect(_envVersion(storage.rawValue('todos')), 1);
+      expect(_envPayload(storage.rawValue('todos')), '["a","b"]');
       s.dispose();
     });
   });

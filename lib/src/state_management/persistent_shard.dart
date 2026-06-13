@@ -97,6 +97,8 @@ abstract class PersistentShard<T, K> extends Shard<T>
   final bool _autoSave;
   final bool _autoLoad;
   final Duration _debounceDuration;
+  final int _version;
+  final String Function(int fromVersion, String payload)? _migrate;
 
   /// Creates a new [PersistentShard] with the given configuration.
   ///
@@ -110,6 +112,8 @@ abstract class PersistentShard<T, K> extends Shard<T>
   /// - [autoSave] - Whether to auto-save on state changes (default: true)
   /// - [autoLoad] - Whether to auto-load on init (default: true)
   /// - [debounceDuration] - Debounce duration for auto-save (default: 500ms)
+  /// - [version] - Current schema version stored in the persistence envelope
+  /// - [migrate] - Migrates an older stored payload to [version]
   PersistentShard(
     super.initialState, {
     StateStorage? storage,
@@ -118,12 +122,16 @@ abstract class PersistentShard<T, K> extends Shard<T>
     bool autoSave = true,
     bool autoLoad = true,
     Duration debounceDuration = const Duration(milliseconds: 500),
+    int version = 1,
+    String Function(int fromVersion, String payload)? migrate,
   }) : _storage = storage,
        _storageFactory = storageFactory,
        _serializer = serializer,
        _autoSave = autoSave,
        _autoLoad = autoLoad,
        _debounceDuration = debounceDuration,
+       _version = version,
+       _migrate = migrate,
        super() {
     assert(
       storage != null || storageFactory != null,
@@ -243,6 +251,8 @@ abstract class PersistentShard<T, K> extends Shard<T>
       onLoadError: onLoadError,
       onSaveError: onSaveError,
       onLoadComplete: onLoadComplete,
+      version: _version,
+      migrate: _migrate,
     );
   }
 
@@ -330,6 +340,8 @@ abstract class SimplePersistentShard<T> extends PersistentShard<T, T> {
     super.autoSave,
     super.autoLoad,
     super.debounceDuration,
+    super.version,
+    super.migrate,
   });
 
   /// Returns the state as-is for persistence.
