@@ -1,11 +1,13 @@
 ## 2.0.0-dev.1
 
+* **BREAKING CHANGE**: `StateStorage` gains a required `delete(String key)` method (per-key removal). Custom `StateStorage` implementations must add it — e.g. `await prefs.remove(key)` / `await box.delete(key)`. The bundled `FakeStateStorage` implements it.
 * **BREAKING CHANGE**: `AsyncValue<T>` gained a fourth state, `AsyncIdle<T>` (the not-yet-started state). Any exhaustive `switch` over an `AsyncValue` must now handle `AsyncIdle` (or migrate to `when`). `FutureShard`/`StreamShard` are unaffected (they begin loading); `AsyncShardBuilder` adds an optional `onIdle:` builder that defaults to the loading widget, so existing call sites keep working.
 * **New**: `AsyncValue.when` / `maybeWhen` — exhaustive and partial pattern matching over idle/loading/data/error (loading and error receive `previousData`).
 * **New**: `AsyncValue.mapData` / `whenData` — transform or read the success value while preserving the variant.
 * **New**: `AsyncValue.guard(future, {previousData})` — runs a future and captures the outcome as `AsyncData`/`AsyncError`.
 * **New**: `AsyncShardBuilder.onIdle` — optional builder for the idle state.
 * **New**: `CommandShard<Arg, Res>` — a `Shard<AsyncValue<Res>>` for one-shot async actions (form submit, create/update/delete). Starts in `AsyncIdle`; `execute(arg)` runs the action (`AsyncLoading` → `AsyncData`/`AsyncError`) with a double-submit guard and dispose-safety, and returns the result or null. `reset()` returns to idle. Renders with `AsyncShardBuilder` via `onIdle:`.
+* **New**: `StatePersistenceMixin.clearPersistence()` (inherited by `PersistentShard`) — deletes this shard's persisted slice via `StateStorage.delete` (cancelling any pending debounced save), for logout/wipe flows. Leaves in-memory state untouched.
 
 ## 1.2.0
 
