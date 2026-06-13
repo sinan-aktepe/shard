@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shard/shard.dart';
@@ -7,6 +9,11 @@ class _MyShard extends Shard<int> with StatePersistenceMixin<int, int> {
   _MyShard() : super(0);
   void setTo(int v) => emit(v);
 }
+
+String? _envPayload(String? raw) =>
+    raw == null ? null : (jsonDecode(raw) as Map)['__shard_p'] as String?;
+int? _envVersion(String? raw) =>
+    raw == null ? null : (jsonDecode(raw) as Map)['__shard_v'] as int?;
 
 void main() {
   test('autoLoad calls onLoadComplete with stored value', () {
@@ -70,7 +77,8 @@ void main() {
 
       async.elapse(const Duration(milliseconds: 150));
       expect(storage.saveCount, 1);
-      expect(storage.rawValue('k'), '3');
+      expect(_envVersion(storage.rawValue('k')), 1);
+      expect(_envPayload(storage.rawValue('k')), '3');
       shard.dispose();
     });
   });
@@ -156,7 +164,8 @@ void main() {
       // Even though debounce was 5s, dispose should have triggered a save.
       async.flushMicrotasks();
       expect(storage.saveCount, 1);
-      expect(storage.rawValue('k'), '42');
+      expect(_envVersion(storage.rawValue('k')), 1);
+      expect(_envPayload(storage.rawValue('k')), '42');
     });
   });
 
@@ -248,6 +257,162 @@ void main() {
       async.flushMicrotasks();
       expect(captured, isA<Exception>());
       expect(storage.rawValue('k'), '5'); // delete threw; value remains
+      shard.disablePersistence();
+      shard.dispose();
+    });
+  });
+
+  test('save writes a version-1 envelope by default', () {
+    fakeAsync((async) {
+      final storage = FakeStateStorage();
+      final shard = _MyShard();
+      shard.enablePersistence(
+        key: 'k',
+        storage: storage,
+        serializer: const IntSerializer(),
+        toPersistence: (s) => s,
+        autoLoad: false,
+        autoSave: false,
+      );
+      shard.setTo(7);
+      shard.saveState();
+      async.flushMicrotasks();
+      expect(_envVersion(storage.rawValue('k')), 1);
+      expect(_envPayload(storage.rawValue('k')), '7');
+      shard.disablePersistence();
+      shard.dispose();
+    });
+  });
+
+  test('migrates legacy bare data on load (migrate called with fromVersion 1)',
+      () {
+    fakeAsync((async) {
+      final storage = FakeStateStorage(initialData: {'k': '5'});
+      final shard = _MyShard();
+      int? loaded;
+      int? migratedFrom;
+      shard.enablePersistence(
+        key: 'k',
+        storage: storage,
+        serializer: const IntSerializer(),
+        toPersistence: (s) => s,
+        version: 2,
+        migrate: (from, payload) {
+          migratedFrom = from;
+          return (int.parse(payload) * 10).toString();
+        },
+        onLoadComplete: (d) => loaded = d,
+      );
+      async.flushMicrotasks();
+      expect(migratedFrom, 1);
+      expect(loaded, 50);
+      shard.disablePersistence();
+      shard.dispose();
+    });
+  });
+
+  test('round-trips an envelope without migrating at the same version', () {
+    fakeAsync((async) {
+      final storage = FakeStateStorage();
+      final writer = _MyShard();
+      writer.enablePersistence(
+        key: 'k',
+        storage: storage,
+        serializer: const IntSerializer(),
+        toPersistence: (s) => s,
+        autoLoad: false,
+        autoSave: false,
+        version: 2,
+      );
+      writer.setTo(9);
+      writer.saveState();
+      async.flushMicrotasks();
+      expect(_envVersion(storage.rawValue('k')), 2);
+
+      final reader = _MyShard();
+      int? loaded;
+      var migrateCalled = false;
+      reader.enablePersistence(
+        key: 'k',
+        storage: storage,
+        serializer: const IntSerializer(),
+        toPersistence: (s) => s,
+        version: 2,
+        migrate: (from, payload) {
+          migrateCalled = true;
+          return payload;
+        },
+        onLoadComplete: (d) => loaded = d,
+      );
+      async.flushMicrotasks();
+      expect(loaded, 9);
+      expect(migrateCalled, isFalse);
+      writer.disablePersistence();
+      writer.dispose();
+      reader.disablePersistence();
+      reader.dispose();
+    });
+  });
+
+  test('migrates a v1 envelope up to the current version, once', () {
+    fakeAsync((async) {
+      final storage = FakeStateStorage();
+      final writer = _MyShard();
+      writer.enablePersistence(
+        key: 'k',
+        storage: storage,
+        serializer: const IntSerializer(),
+        toPersistence: (s) => s,
+        autoLoad: false,
+        autoSave: false,
+        version: 1,
+      );
+      writer.setTo(4);
+      writer.saveState();
+      async.flushMicrotasks();
+      expect(_envVersion(storage.rawValue('k')), 1);
+
+      final reader = _MyShard();
+      int? loaded;
+      final calls = <int>[];
+      reader.enablePersistence(
+        key: 'k',
+        storage: storage,
+        serializer: const IntSerializer(),
+        toPersistence: (s) => s,
+        version: 3,
+        migrate: (from, payload) {
+          calls.add(from);
+          return payload;
+        },
+        onLoadComplete: (d) => loaded = d,
+      );
+      async.flushMicrotasks();
+      expect(calls, [1]);
+      expect(loaded, 4);
+      writer.disablePersistence();
+      writer.dispose();
+      reader.disablePersistence();
+      reader.dispose();
+    });
+  });
+
+  test('migrate throwing routes to onLoadError', () {
+    fakeAsync((async) {
+      final storage = FakeStateStorage(initialData: {'k': '5'});
+      final shard = _MyShard();
+      Object? loadErr;
+      shard.enablePersistence(
+        key: 'k',
+        storage: storage,
+        serializer: const IntSerializer(),
+        toPersistence: (s) => s,
+        version: 2,
+        migrate: (from, payload) => throw StateError('bad migration'),
+        onLoadError: (e, st) => loadErr = e,
+      );
+      async.flushMicrotasks();
+      expect(loadErr, isA<StateError>());
       shard.disablePersistence();
       shard.dispose();
     });

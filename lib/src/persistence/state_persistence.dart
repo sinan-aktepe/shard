@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import '../state_management/shard.dart';
 import 'storage.dart';
 import 'serializer.dart';
@@ -47,6 +48,15 @@ class PersistenceConfig<T, K> {
   /// Receives the deserialized data of type [K], or null if storage was empty.
   final void Function(K? data)? onLoadComplete;
 
+  /// The current schema version written into the persistence envelope.
+  final int version;
+
+  /// Migrates a stored payload from [fromVersion] up to [version].
+  ///
+  /// Called once on load when the stored version is older than [version];
+  /// the function is responsible for chaining intermediate migrations.
+  final String Function(int fromVersion, String payload)? migrate;
+
   /// Creates a new persistence configuration.
   PersistenceConfig({
     required this.key,
@@ -59,6 +69,8 @@ class PersistenceConfig<T, K> {
     this.onSaveError,
     this.onLoadError,
     this.onLoadComplete,
+    this.version = 1,
+    this.migrate,
   });
 }
 
@@ -118,6 +130,19 @@ class PersistenceConfig<T, K> {
 /// - [StateSerializer] for serialization interface
 mixin StatePersistenceMixin<T, K> on Shard<T> {
   static const String _autoSaveDebounceKey = 'shard_persistence_save';
+  static const String _envelopeVersionKey = '__shard_v';
+  static const String _envelopePayloadKey = '__shard_p';
+
+  /// Serializes the current persistable slice into a version envelope.
+  String _wrapEnvelope(PersistenceConfig<T, K> config) {
+    final dataToSave = config.toPersistence(state);
+    final serialized = config.serializer.serialize(dataToSave);
+    return jsonEncode({
+      _envelopeVersionKey: config.version,
+      _envelopePayloadKey: serialized,
+    });
+  }
+
   PersistenceConfig<T, K>? _persistenceConfig;
   bool _isLoading = false;
   Future<void> _saveQueue = Future.value();
@@ -158,6 +183,9 @@ mixin StatePersistenceMixin<T, K> on Shard<T> {
   /// - [onSaveError] - Callback for save errors
   /// - [onLoadError] - Callback for load errors
   /// - [onLoadComplete] - Callback when load completes (data is null if storage was empty)
+  /// - [version] - Current schema version stored in the envelope (default: 1)
+  /// - [migrate] - Migrates an older stored payload to [version]; called once
+  ///   with the stored version when it is older than [version]
   ///
   /// ```dart
   /// @override
@@ -186,6 +214,8 @@ mixin StatePersistenceMixin<T, K> on Shard<T> {
     void Function(Object error, StackTrace? stackTrace)? onSaveError,
     void Function(Object error, StackTrace? stackTrace)? onLoadError,
     void Function(K? data)? onLoadComplete,
+    int version = 1,
+    String Function(int fromVersion, String payload)? migrate,
   }) {
     // Check if disposed before enabling persistence
     if (isDisposed) {
@@ -203,6 +233,8 @@ mixin StatePersistenceMixin<T, K> on Shard<T> {
       onSaveError: onSaveError,
       onLoadError: onLoadError,
       onLoadComplete: onLoadComplete,
+      version: version,
+      migrate: migrate,
     );
     // Auto-load if enabled
     if (autoLoad) {
@@ -283,10 +315,7 @@ mixin StatePersistenceMixin<T, K> on Shard<T> {
       }
 
       try {
-        // Extract the data to persist from state using toPersistence
-        final dataToSave = config.toPersistence(state);
-        final serialized = config.serializer.serialize(dataToSave);
-        await config.storage.save(config.key, serialized);
+        await config.storage.save(config.key, _wrapEnvelope(config));
       } catch (error, stackTrace) {
         // Call the callback if provided
         if (config.onSaveError != null) {
@@ -330,16 +359,42 @@ mixin StatePersistenceMixin<T, K> on Shard<T> {
     final config = _persistenceConfig!;
 
     try {
-      final data = await config.storage.load(config.key);
+      final raw = await config.storage.load(config.key);
 
       // Check again after async operation - might have been disposed during load
       if (isDisposed) {
         return false;
       }
 
-      final deserialized = data != null && data.isNotEmpty
-          ? config.serializer.deserialize(data)
-          : null;
+      if (raw == null || raw.isEmpty) {
+        if (!isDisposed) {
+          config.onLoadComplete?.call(null);
+          return true;
+        }
+        return false;
+      }
+
+      // Detect a version envelope; otherwise treat as legacy (version 1) data.
+      var storedVersion = 1;
+      var payload = raw;
+      Object? decoded;
+      try {
+        decoded = jsonDecode(raw);
+      } catch (_) {
+        decoded = null; // not JSON → legacy bare payload
+      }
+      if (decoded is Map &&
+          decoded.containsKey(_envelopeVersionKey) &&
+          decoded.containsKey(_envelopePayloadKey)) {
+        storedVersion = decoded[_envelopeVersionKey] as int;
+        payload = decoded[_envelopePayloadKey] as String;
+      }
+
+      if (storedVersion < config.version && config.migrate != null) {
+        payload = config.migrate!(storedVersion, payload);
+      }
+
+      final deserialized = config.serializer.deserialize(payload);
       if (!isDisposed) {
         config.onLoadComplete?.call(deserialized);
         return true;
@@ -391,9 +446,7 @@ mixin StatePersistenceMixin<T, K> on Shard<T> {
     if (config != null) {
       _saveQueue = _saveQueue.then((_) async {
         try {
-          final dataToSave = config.toPersistence(state);
-          final serialized = config.serializer.serialize(dataToSave);
-          await config.storage.save(config.key, serialized);
+          await config.storage.save(config.key, _wrapEnvelope(config));
         } catch (error, stackTrace) {
           if (config.onSaveError != null) {
             config.onSaveError!(error, stackTrace);
