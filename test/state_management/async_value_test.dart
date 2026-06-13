@@ -100,4 +100,34 @@ void main() {
       expect(AsyncError<int>(Exception('x'), st).stackTraceOrNull, same(st));
     });
   });
+
+  group('AsyncIdle', () {
+    test('isIdle is true, others false', () {
+      const v = AsyncIdle<int>();
+      expect(v.isIdle, isTrue);
+      expect(v.isLoading, isFalse);
+      expect(v.hasData, isFalse);
+      expect(v.hasError, isFalse);
+    });
+
+    test('two AsyncIdle of the same type are equal', () {
+      expect(const AsyncIdle<int>(), const AsyncIdle<int>());
+    });
+
+    test('dataOrNull is null', () {
+      expect(const AsyncIdle<int>().dataOrNull, isNull);
+    });
+
+    test('errorOrNull and stackTraceOrNull are null', () {
+      const v = AsyncIdle<int>();
+      expect(v.errorOrNull, isNull);
+      expect(v.stackTraceOrNull, isNull);
+    });
+  });
+
+  test('isIdle is false for the other variants', () {
+    expect(const AsyncLoading<int>().isIdle, isFalse);
+    expect(const AsyncData<int>(1).isIdle, isFalse);
+    expect(const AsyncError<int>('e').isIdle, isFalse);
+  });
 }

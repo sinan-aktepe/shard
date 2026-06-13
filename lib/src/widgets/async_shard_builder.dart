@@ -126,6 +126,7 @@ class AsyncShardBuilder<T extends Shard<AsyncValue<D>>, D>
       shard: shard,
       builder: (context, asyncValue) {
         return switch (asyncValue) {
+          AsyncIdle<D>() => _buildLoading(context, null),
           AsyncLoading<D>(:final previousData) => _buildLoading(
             context,
             previousData,

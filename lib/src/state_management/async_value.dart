@@ -1,6 +1,7 @@
 /// Represents the state of an asynchronous operation.
 ///
-/// [AsyncValue] is a sealed class that can be one of three states:
+/// [AsyncValue] is a sealed class that can be one of four states:
+/// - [AsyncIdle] - The operation has not started
 /// - [AsyncLoading] - The operation is in progress
 /// - [AsyncData] - The operation completed successfully with data
 /// - [AsyncError] - The operation failed with an error
@@ -11,6 +12,9 @@
 /// - [StreamShard] for Stream-based async state management
 sealed class AsyncValue<T> {
   const AsyncValue();
+
+  /// Whether this value is idle (the operation has not started).
+  bool get isIdle => this is AsyncIdle<T>;
 
   /// Whether this value is currently loading.
   bool get isLoading => this is AsyncLoading<T>;
@@ -24,7 +28,9 @@ sealed class AsyncValue<T> {
   /// Returns the data if available, otherwise null.
   ///
   /// For [AsyncLoading] and [AsyncError], returns the previous data if available.
+  /// [AsyncIdle] always returns null.
   T? get dataOrNull => switch (this) {
+    AsyncIdle<T>() => null,
     AsyncData<T>(:final data) => data,
     AsyncLoading<T>(:final previousData) => previousData,
     AsyncError<T>(:final previousData) => previousData,
@@ -37,6 +43,30 @@ sealed class AsyncValue<T> {
   /// Returns the stack trace if this is an [AsyncError], otherwise null.
   StackTrace? get stackTraceOrNull =>
       this is AsyncError<T> ? (this as AsyncError<T>).stackTrace : null;
+}
+
+/// Represents the initial, not-yet-started state of an asynchronous operation.
+///
+/// [FutureShard] and [StreamShard] never enter this state (they begin loading),
+/// but mutation-style shards start here and transition to [AsyncLoading] when
+/// run.
+///
+/// ```dart
+/// const idle = AsyncIdle<int>();
+/// ```
+final class AsyncIdle<T> extends AsyncValue<T> {
+  /// Creates an idle state.
+  const AsyncIdle();
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) || other is AsyncIdle<T>;
+
+  @override
+  int get hashCode => runtimeType.hashCode;
+
+  @override
+  String toString() => 'AsyncIdle<$T>';
 }
 
 /// Represents a loading state for an asynchronous operation.
