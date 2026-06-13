@@ -5,6 +5,7 @@
 * **New**: `AsyncValue.mapData` / `whenData` — transform or read the success value while preserving the variant.
 * **New**: `AsyncValue.guard(future, {previousData})` — runs a future and captures the outcome as `AsyncData`/`AsyncError`.
 * **New**: `AsyncShardBuilder.onIdle` — optional builder for the idle state.
+* **New**: `CommandShard<Arg, Res>` — a `Shard<AsyncValue<Res>>` for one-shot async actions (form submit, create/update/delete). Starts in `AsyncIdle`; `execute(arg)` runs the action (`AsyncLoading` → `AsyncData`/`AsyncError`) with a double-submit guard and dispose-safety, and returns the result or null. `reset()` returns to idle. Renders with `AsyncShardBuilder` via `onIdle:`.
 
 ## 1.2.0
 
