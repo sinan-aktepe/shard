@@ -36,10 +36,7 @@ void main() {
           .toList(),
       toJson: (xs) => xs.map((t) => t.toJson()).toList(),
     );
-    final todos = [
-      _Todo(id: 1, title: 'a'),
-      _Todo(id: 2, title: 'b'),
-    ];
+    final todos = [_Todo(id: 1, title: 'a'), _Todo(id: 2, title: 'b')];
     expect(s.deserialize(s.serialize(todos)), todos);
   });
 

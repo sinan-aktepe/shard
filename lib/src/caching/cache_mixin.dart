@@ -39,6 +39,15 @@ import 'package:shard/src/caching/memory_cache_service.dart';
 /// );
 /// ```
 mixin CacheMixin {
+  /// The cache backend used by [resolve] to read and write entries.
+  ///
+  /// Defaults to the [MemoryCacheService] singleton. Override to provide a
+  /// different backend (for example a persistent or test cache):
+  ///
+  /// ```dart
+  /// @override
+  /// CacheService get cacheService => MyDiskCacheService();
+  /// ```
   CacheService get cacheService => MemoryCacheService();
 
   /// Whether cache hit/miss/error events are logged.
@@ -67,6 +76,21 @@ mixin CacheMixin {
     if (logCacheEvents) onCacheLog(message);
   }
 
+  /// Returns the value for [key], serving a fresh cache hit when available and
+  /// otherwise invoking [fetcher] and caching its result.
+  ///
+  /// - [key]: cache key for this value.
+  /// - [fetcher]: called to produce the value on a cache miss (or when
+  ///   [forceRefresh] is `true`); its result is stored with the given [ttl].
+  /// - [ttl]: how long a freshly fetched value stays valid. Defaults to 1 hour.
+  /// - [forceRefresh]: when `true`, skips the cache read and always calls
+  ///   [fetcher].
+  /// - [onErrorReturnOldCache]: when `true` and [fetcher] throws, falls back to
+  ///   the previously cached value (even if expired) instead of rethrowing.
+  ///
+  /// Rethrows the [fetcher] error when no usable fallback is available. Cache
+  /// read/write failures are logged (see [logCacheEvents]) and never surfaced
+  /// to the caller.
   Future<T> resolve<T>({
     required String key,
     required Future<T> Function() fetcher,

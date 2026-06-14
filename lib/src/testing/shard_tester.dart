@@ -191,9 +191,7 @@ class ShardTester<T> {
   /// Does NOT return the current `shard.state` or any historical recorded
   /// state — only the next emission after this call. Throws
   /// [ShardTimeoutError] if no emission arrives within [timeout].
-  Future<T> waitForNext({
-    Duration timeout = const Duration(seconds: 1),
-  }) {
+  Future<T> waitForNext({Duration timeout = const Duration(seconds: 1)}) {
     return _waitForNextInternal(timeout);
   }
 

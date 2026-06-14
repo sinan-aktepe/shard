@@ -1,3 +1,0 @@
-# Development artifacts (specs and implementation plans). These live in the
-# repo for design history but should not ship with the published package.
-docs/

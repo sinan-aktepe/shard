@@ -29,7 +29,10 @@ void main() {
       final cache = MemoryCacheService();
       await cache.write(
         'k',
-        CacheEntry(data: 1, expiryDate: DateTime.now().add(const Duration(hours: 1))),
+        CacheEntry(
+          data: 1,
+          expiryDate: DateTime.now().add(const Duration(hours: 1)),
+        ),
       );
       await cache.delete('k');
       expect(await cache.read('k'), isNull);
@@ -39,11 +42,17 @@ void main() {
       final cache = MemoryCacheService();
       await cache.write(
         'a',
-        CacheEntry(data: 1, expiryDate: DateTime.now().add(const Duration(hours: 1))),
+        CacheEntry(
+          data: 1,
+          expiryDate: DateTime.now().add(const Duration(hours: 1)),
+        ),
       );
       await cache.write(
         'b',
-        CacheEntry(data: 2, expiryDate: DateTime.now().add(const Duration(hours: 1))),
+        CacheEntry(
+          data: 2,
+          expiryDate: DateTime.now().add(const Duration(hours: 1)),
+        ),
       );
       await cache.clearAll();
       expect(await cache.read('a'), isNull);
@@ -69,28 +78,30 @@ void main() {
     });
 
     CacheEntry fresh(Object? v) => CacheEntry(
-          data: v,
-          expiryDate: DateTime.now().add(const Duration(hours: 1)),
+      data: v,
+      expiryDate: DateTime.now().add(const Duration(hours: 1)),
+    );
+
+    test(
+      'evictExpired removes only expired entries and returns the count',
+      () async {
+        final cache = MemoryCacheService();
+        await cache.write('fresh', fresh(1));
+        await cache.write(
+          'stale',
+          CacheEntry(
+            data: 2,
+            expiryDate: DateTime.now().subtract(const Duration(seconds: 1)),
+          ),
         );
 
-    test('evictExpired removes only expired entries and returns the count',
-        () async {
-      final cache = MemoryCacheService();
-      await cache.write('fresh', fresh(1));
-      await cache.write(
-        'stale',
-        CacheEntry(
-          data: 2,
-          expiryDate: DateTime.now().subtract(const Duration(seconds: 1)),
-        ),
-      );
+        final removed = cache.evictExpired();
 
-      final removed = cache.evictExpired();
-
-      expect(removed, 1);
-      expect(await cache.read('fresh'), isNotNull);
-      expect(await cache.read('stale'), isNull);
-    });
+        expect(removed, 1);
+        expect(await cache.read('fresh'), isNotNull);
+        expect(await cache.read('stale'), isNull);
+      },
+    );
 
     test('maxEntries evicts the oldest entry on write', () async {
       final cache = MemoryCacheService();

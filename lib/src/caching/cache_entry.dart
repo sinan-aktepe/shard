@@ -28,11 +28,20 @@ class CacheEntry {
   /// - [expiryDate]: When this entry should be considered expired
   CacheEntry({required this.data, required this.expiryDate});
 
+  /// Serializes this entry to a JSON-compatible map.
+  ///
+  /// The [expiryDate] is encoded as an ISO 8601 string; [data] is included
+  /// as-is, so it must itself be JSON-serializable for the result to round-trip
+  /// through [CacheEntry.fromJson].
   Map<String, dynamic> toJson() => {
     'data': data,
     'expiryDate': expiryDate.toIso8601String(),
   };
 
+  /// Reconstructs a [CacheEntry] from a JSON map produced by [toJson].
+  ///
+  /// The `'expiryDate'` field is parsed back into a [DateTime]; `'data'` is
+  /// returned unchanged.
   factory CacheEntry.fromJson(Map<String, dynamic> json) {
     return CacheEntry(
       data: json['data'],

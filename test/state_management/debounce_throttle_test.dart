@@ -6,7 +6,10 @@ class _DebounceShard extends Shard<int> {
   _DebounceShard() : super(0);
 
   int callCount = 0;
-  void run(String key, {Duration duration = const Duration(milliseconds: 100)}) {
+  void run(
+    String key, {
+    Duration duration = const Duration(milliseconds: 100),
+  }) {
     debounce(key, () => callCount++, duration: duration);
   }
 
@@ -18,7 +21,10 @@ class _ThrottleShard extends Shard<int> {
   _ThrottleShard() : super(0);
 
   int callCount = 0;
-  bool run(String key, {Duration duration = const Duration(milliseconds: 100)}) {
+  bool run(
+    String key, {
+    Duration duration = const Duration(milliseconds: 100),
+  }) {
     return throttle(key, () => callCount++, duration: duration);
   }
 

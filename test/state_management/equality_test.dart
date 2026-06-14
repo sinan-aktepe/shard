@@ -10,13 +10,16 @@ void main() {
   group('deepEquals', () {
     test('compares nested lists by value', () {
       expect(
-        deepEquals([
-          1,
-          [2, 3],
-        ], [
-          1,
-          [2, 3],
-        ]),
+        deepEquals(
+          [
+            1,
+            [2, 3],
+          ],
+          [
+            1,
+            [2, 3],
+          ],
+        ),
         isTrue,
       );
       expect(deepEquals([1, 2], [1, 2, 3]), isFalse);
@@ -24,11 +27,14 @@ void main() {
 
     test('compares maps by value, including nested collections', () {
       expect(
-        deepEquals({
-          'a': [1, 2],
-        }, {
-          'a': [1, 2],
-        }),
+        deepEquals(
+          {
+            'a': [1, 2],
+          },
+          {
+            'a': [1, 2],
+          },
+        ),
         isTrue,
       );
       expect(deepEquals({'a': 1}, {'a': 2}), isFalse);

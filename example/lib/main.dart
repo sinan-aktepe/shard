@@ -26,7 +26,7 @@ class MyApp extends StatelessWidget {
         useMaterial3: true,
       ),
       home: ShardProvider<CounterShard>(
-        create: () => CounterShard(),
+        create: CounterShard.new,
         child: const CounterScreen(),
       ),
     );

@@ -15,7 +15,8 @@ void main() {
       MaterialApp(
         home: ShardBuilder<_Counter, int>(
           shard: shard,
-          builder: (context, count) => Text('$count', textDirection: TextDirection.ltr),
+          builder: (context, count) =>
+              Text('$count', textDirection: TextDirection.ltr),
         ),
       ),
     );

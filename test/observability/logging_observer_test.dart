@@ -16,10 +16,7 @@ void main() {
   group('LoggingObserver', () {
     test('logs onChange to custom printer', () {
       final lines = <String>[];
-      Shard.observer = LoggingObserver(
-        enabled: true,
-        printer: lines.add,
-      );
+      Shard.observer = LoggingObserver(enabled: true, printer: lines.add);
 
       final shard = _CounterShard();
       shard.increment();
@@ -34,10 +31,7 @@ void main() {
 
     test('logs onError to custom printer', () {
       final lines = <String>[];
-      Shard.observer = LoggingObserver(
-        enabled: true,
-        printer: lines.add,
-      );
+      Shard.observer = LoggingObserver(enabled: true, printer: lines.add);
 
       final shard = _CounterShard();
       shard.fail();
@@ -51,10 +45,7 @@ void main() {
 
     test('disabled observer logs nothing', () {
       final lines = <String>[];
-      Shard.observer = LoggingObserver(
-        enabled: false,
-        printer: lines.add,
-      );
+      Shard.observer = LoggingObserver(enabled: false, printer: lines.add);
 
       final shard = _CounterShard();
       shard.increment();

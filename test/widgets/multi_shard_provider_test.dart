@@ -21,11 +21,13 @@ void main() {
             ShardProvider<_A>(create: () => _A()),
             ShardProvider<_B>(create: () => _B()),
           ],
-          child: Builder(builder: (context) {
-            a = ShardProvider.of<_A>(context, listen: false);
-            b = ShardProvider.of<_B>(context, listen: false);
-            return const SizedBox();
-          }),
+          child: Builder(
+            builder: (context) {
+              a = ShardProvider.of<_A>(context, listen: false);
+              b = ShardProvider.of<_B>(context, listen: false);
+              return const SizedBox();
+            },
+          ),
         ),
       ),
     );
@@ -57,11 +59,13 @@ void main() {
             ShardProvider<_A>(create: () => _A()),
             ShardProvider<_B>.value(value: external),
           ],
-          child: Builder(builder: (context) {
-            a = ShardProvider.of<_A>(context, listen: false);
-            b = ShardProvider.of<_B>(context, listen: false);
-            return const SizedBox();
-          }),
+          child: Builder(
+            builder: (context) {
+              a = ShardProvider.of<_A>(context, listen: false);
+              b = ShardProvider.of<_B>(context, listen: false);
+              return const SizedBox();
+            },
+          ),
         ),
       ),
     );

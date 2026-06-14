@@ -1,6 +1,6 @@
 ## 2.0.0-dev.1
 
-First 2.x development release. Three breaking changes (all with a clear migration path — see [docs/superpowers/specs/2026-06-13-shard-2.0-migration.md](docs/superpowers/specs/2026-06-13-shard-2.0-migration.md)) plus a wave of additive features. The "zero runtime dependencies" guarantee is unchanged.
+First 2.x development release. Three breaking changes (all with a clear migration path — see [docs/superpowers/specs/2026-06-13-shard-2.0-migration.md](docs/superpowers/specs/2026-06-13-shard-2.0-migration.md)) plus a wave of additive features and fixes. The "zero runtime dependencies" guarantee is unchanged.
 
 ### Breaking changes
 
@@ -22,6 +22,8 @@ First 2.x development release. Three breaking changes (all with a clear migratio
 * **New**: `HistoryMixin<T>` — undo/redo for a `Shard` (`undo()`, `redo()`, `canUndo`, `canRedo`, `clearHistory()`, configurable `maxHistory`). Records via `onChange` and restores via `setStateInternal`, so restores notify listeners/observers without being re-recorded.
 * **New**: `Shard.stream` — a lazily-created broadcast `Stream<T>` of state changes (does not replay the current value; closes on dispose). Enables `StreamBuilder`, `await for`, and `emitsInOrder` stream assertions without a dependency.
 * **New**: `StreamShard.pause()` / `resume()` / `isPaused` — pause and resume the underlying stream subscription (e.g. while a screen is backgrounded). Events are buffered while paused per `StreamSubscription` semantics.
+* **New**: `deepEquals(a, b)` — structural equality for `List` / `Set` / `Map` / `Iterable` (recursive), with a `==` fallback for scalars. Useful in `buildWhen` / `listenWhen`, inside a `ShardSelector`, or anywhere collection-aware comparison helps.
+* **New**: `DeepEqualityMixin<T>` — a `Shard` mixin that makes `emit` dedupe state with `deepEquals` instead of `==`, so rebuilding a collection with identical contents no longer notifies listeners.
 
 ### Widgets
 
@@ -33,23 +35,30 @@ First 2.x development release. Three breaking changes (all with a clear migratio
 * **New**: schema versioning — `enablePersistence` and `PersistentShard`/`SimplePersistentShard` accept `version` (default 1) and `migrate(fromVersion, payload)`. `migrate` runs once when the stored version is older than `version`; it owns chaining intermediate migrations.
 * **New**: `flushOnPause` — `enablePersistence` and `PersistentShard`/`SimplePersistentShard` accept `flushOnPause` (default false). When enabled, a `WidgetsBindingObserver` flushes a save on `AppLifecycleState.paused`/`detached`, so a backgrounded app doesn't lose the last change inside the debounce window. The observer is removed on `disablePersistence`/dispose.
 
-## 1.2.0
+### Caching
 
-* **New**: `LoggingObserver` — a `ShardObserver` subclass that logs state changes and errors via `dart:developer.log(name: 'shard')` for DevTools integration. Defaults to `kDebugMode` so it's inert in release builds. Configurable `printer`, `shouldLog` predicate, `includeStackTrace`, and independent toggles for `logChanges` / `logErrors`.
-* **New**: `package:shard/shard_test.dart` — a separate public entry point for test utilities. Production builds do not link this code.
-  * `ShardTester<T>` for capturing and asserting state sequences (`recordedStates`, `expectStates`, `expectNoMoreStates`, `waitForNext`, `waitFor`, `clear`, `dispose`, plus a `scope` static helper).
-  * `shardTest<S, T>()` declarative helper for one-shot `build → act → expect` tests.
-  * `FakeStateStorage` and `FakeCacheService` — in-memory implementations of the `StateStorage` / `CacheService` interfaces with failure injection, latency simulation, and call inspection.
-  * `MockShardObserver` (plus `ObservedChange<T>` / `ObservedError` records) with a `scope` helper that safely installs/restores the global `Shard.observer` in a `finally` block.
-  * `ShardAssertionError` / `ShardTimeoutError` — the error types `ShardTester` throws on failure.
-* **New**: `deepEquals(a, b)` — structural equality for `List` / `Set` / `Map` / `Iterable` (recursive), with a `==` fallback for scalars. Useful in `buildWhen` / `listenWhen`, inside a `ShardSelector`, or anywhere collection-aware comparison helps.
-* **New**: `DeepEqualityMixin<T>` — a `Shard` mixin that makes `emit` dedupe state with `deepEquals` instead of `==`, so rebuilding a collection with identical contents no longer notifies listeners.
 * **New**: `MemoryCacheService` memory bounding:
   * `maxEntries` — caps the number of retained entries (default `null`, unbounded); the oldest entries are evicted on `write` once the limit is exceeded.
   * `evictExpired()` — removes all expired entries on demand and returns the count removed.
   * `entryCount` — the number of entries currently held.
   * `read` still returns expired entries, so stale-while-revalidate flows (`CacheMixin`'s `onErrorReturnOldCache`) keep working.
 * **New**: `CacheMixin.logCacheEvents` and `CacheMixin.onCacheLog(message)` — toggle cache logging and redirect log lines (to a custom logger, a test recorder, etc.). The default sink is `dart:developer.log(name: 'shard.cache')`.
+
+### Observability
+
+* **New**: `LoggingObserver` — a `ShardObserver` subclass that logs state changes and errors via `dart:developer.log(name: 'shard')` for DevTools integration. Defaults to `kDebugMode` so it's inert in release builds. Configurable `printer`, `shouldLog` predicate, `includeStackTrace`, and independent toggles for `logChanges` / `logErrors`.
+
+### Testing
+
+* **New**: `package:shard/shard_test.dart` — a separate public entry point for test utilities. Production builds do not link this code.
+  * `ShardTester<T>` for capturing and asserting state sequences (`recordedStates`, `expectStates`, `expectNoMoreStates`, `waitForNext`, `waitFor`, `clear`, `dispose`, plus a `scope` static helper).
+  * `shardTest<S, T>()` declarative helper for one-shot `build → act → expect` tests.
+  * `FakeStateStorage` and `FakeCacheService` — in-memory implementations of the `StateStorage` / `CacheService` interfaces with failure injection, latency simulation, and call inspection.
+  * `MockShardObserver` (plus `ObservedChange<T>` / `ObservedError` records) with a `scope` helper that safely installs/restores the global `Shard.observer` in a `finally` block.
+  * `ShardAssertionError` / `ShardTimeoutError` — the error types `ShardTester` throws on failure.
+
+### Fixes
+
 * **Fix**: `StatePersistenceMixin.disposePersistenceIfEnabled` previously reset `_saveQueue` to a fresh future and then called `saveState()`, which short-circuited because `_isDisposed` was already true. As a result, a pending debounced save was silently dropped on disposal. Disposal now flushes the final write by chaining it onto the existing save queue and bypassing the `isDisposed` guard.
 * **Fix**: `ShardSelector` now rebuilds correctly when the selected value is `null`. Previously a selector returning `null` (for example selecting a nullable field) left the widget stuck on `SizedBox.shrink()` and never invoked `builder`.
 * **Fix**: `ShardBuilder` and `ShardSelector` now rebind their listener when a different instance is supplied to the `shard:` parameter (via `didUpdateWidget`). Previously they kept listening to the originally-provided instance.

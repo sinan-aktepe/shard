@@ -10,6 +10,9 @@ import 'shard.dart';
 /// Shard.observer = MyShardObserver();
 /// ```
 abstract class ShardObserver {
+  /// Creates a [ShardObserver].
+  ///
+  /// `const` so subclasses can provide const constructors.
   const ShardObserver();
 
   /// Called whenever a [Shard]'s state changes.

@@ -52,10 +52,8 @@ class _RecordingRepo with CacheMixin {
   @override
   void onCacheLog(String message) => logs.add(message);
 
-  Future<int> getValue(String id) => resolve<int>(
-        key: 'v_$id',
-        fetcher: () async => id.length,
-      );
+  Future<int> getValue(String id) =>
+      resolve<int>(key: 'v_$id', fetcher: () async => id.length);
 }
 
 void main() {
@@ -115,12 +113,14 @@ void main() {
     );
   });
 
-  test('routes cache events to onCacheLog when logCacheEvents is true',
-      () async {
-    final repo = _RecordingRepo(FakeCacheService(), logEvents: true);
-    await repo.getValue('abc');
-    expect(repo.logs, isNotEmpty);
-  });
+  test(
+    'routes cache events to onCacheLog when logCacheEvents is true',
+    () async {
+      final repo = _RecordingRepo(FakeCacheService(), logEvents: true);
+      await repo.getValue('abc');
+      expect(repo.logs, isNotEmpty);
+    },
+  );
 
   test('suppresses cache logging when logCacheEvents is false', () async {
     final repo = _RecordingRepo(FakeCacheService(), logEvents: false);

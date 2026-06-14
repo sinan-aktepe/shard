@@ -70,7 +70,11 @@ class FakeCacheService implements CacheService {
   bool hasKey(String key) => _data.containsKey(key);
 
   /// Pre-populates a fresh entry that expires in [ttl] (default 1 hour).
-  void seed(String key, Object? data, {Duration ttl = const Duration(hours: 1)}) {
+  void seed(
+    String key,
+    Object? data, {
+    Duration ttl = const Duration(hours: 1),
+  }) {
     _data[key] = CacheEntry(data: data, expiryDate: DateTime.now().add(ttl));
   }
 

@@ -33,11 +33,27 @@ migrate_working_dir/
 # Documentation
 /my-docs/
 
-# Claude Code / AI assistant files
+# AI assistant / agent files (none of these should ship or be tracked)
+# Claude
 CLAUDE.md
+CLAUDE.local.md
 .claude/
+docs/superpowers/
+# Codex
+AGENTS.md
+.codex/
+# Gemini
+GEMINI.md
+.gemini/
+# Cursor
 .cursor/
+.cursorrules
+# Other agents / tools
 .aider*
 .windsurfrules
-GEMINI.md
-AGENTS.md
+.windsurf/
+.clinerules
+.continue/
+.github/copilot-instructions.md
+.opencode/
+.crush/

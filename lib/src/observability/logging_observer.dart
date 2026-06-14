@@ -79,7 +79,9 @@ class LoggingObserver extends ShardObserver {
   void onError<T>(Shard<T> shard, Object error, StackTrace? stackTrace) {
     if (!enabled || !logErrors) return;
     if (shouldLog != null && !shouldLog!(shard)) return;
-    final trace = includeStackTrace && stackTrace != null ? '\n$stackTrace' : '';
+    final trace = includeStackTrace && stackTrace != null
+        ? '\n$stackTrace'
+        : '';
     _write('[${shard.runtimeType}] ERROR: $error$trace');
   }
 

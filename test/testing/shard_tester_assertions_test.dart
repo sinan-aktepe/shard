@@ -65,10 +65,10 @@ void main() {
       final tester = ShardTester(shard);
       Future.delayed(const Duration(milliseconds: 30), shard.inc);
       Future.delayed(const Duration(milliseconds: 60), shard.inc);
-      await tester.expectStates(
-        [1, 2],
-        timeout: const Duration(milliseconds: 500),
-      );
+      await tester.expectStates([
+        1,
+        2,
+      ], timeout: const Duration(milliseconds: 500));
       await tester.dispose();
       shard.dispose();
     });
@@ -78,27 +78,31 @@ void main() {
       final tester = ShardTester(shard);
       shard.inc();
       await expectLater(
-        tester.expectStates(
-          [1, 2, 3],
-          timeout: const Duration(milliseconds: 50),
-        ),
+        tester.expectStates([
+          1,
+          2,
+          3,
+        ], timeout: const Duration(milliseconds: 50)),
         throwsA(isA<ShardAssertionError>()),
       );
       await tester.dispose();
       shard.dispose();
     });
 
-    test('empty expected with exactMatch: true requires no emissions', () async {
-      final shard = _CounterShard();
-      final tester = ShardTester(shard);
-      await tester.expectStates(
-        [],
-        exactMatch: true,
-        timeout: const Duration(milliseconds: 20),
-      );
-      await tester.dispose();
-      shard.dispose();
-    });
+    test(
+      'empty expected with exactMatch: true requires no emissions',
+      () async {
+        final shard = _CounterShard();
+        final tester = ShardTester(shard);
+        await tester.expectStates(
+          [],
+          exactMatch: true,
+          timeout: const Duration(milliseconds: 20),
+        );
+        await tester.dispose();
+        shard.dispose();
+      },
+    );
 
     test('empty expected with exactMatch: false is vacuously true', () async {
       final shard = _CounterShard();

@@ -26,17 +26,23 @@ class _CounterShard extends Shard<int> {
 }
 
 void main() {
-  testWidgets('create constructor: onInit called, dispose called on removal',
-      (tester) async {
+  testWidgets('create constructor: onInit called, dispose called on removal', (
+    tester,
+  ) async {
     late _LifecycleShard captured;
     await tester.pumpWidget(
       MaterialApp(
         home: ShardProvider<_LifecycleShard>(
           create: () => _LifecycleShard(),
-          child: Builder(builder: (context) {
-            captured = ShardProvider.of<_LifecycleShard>(context, listen: false);
-            return const SizedBox();
-          }),
+          child: Builder(
+            builder: (context) {
+              captured = ShardProvider.of<_LifecycleShard>(
+                context,
+                listen: false,
+              );
+              return const SizedBox();
+            },
+          ),
         ),
       ),
     );
@@ -47,8 +53,9 @@ void main() {
     expect(captured.disposeCount, 1);
   });
 
-  testWidgets('value constructor: dispose NOT called on removal',
-      (tester) async {
+  testWidgets('value constructor: dispose NOT called on removal', (
+    tester,
+  ) async {
     final external = _LifecycleShard();
     await tester.pumpWidget(
       MaterialApp(
@@ -75,11 +82,13 @@ void main() {
       MaterialApp(
         home: ShardProvider<_CounterShard>.value(
           value: shard,
-          child: Builder(builder: (context) {
-            buildCount++;
-            final s = ShardProvider.of<_CounterShard>(context, listen: true);
-            return Text('${s.state}', textDirection: TextDirection.ltr);
-          }),
+          child: Builder(
+            builder: (context) {
+              buildCount++;
+              final s = ShardProvider.of<_CounterShard>(context, listen: true);
+              return Text('${s.state}', textDirection: TextDirection.ltr);
+            },
+          ),
         ),
       ),
     );
@@ -104,11 +113,13 @@ void main() {
       MaterialApp(
         home: ShardProvider<_CounterShard>.value(
           value: shard,
-          child: Builder(builder: (context) {
-            buildCount++;
-            final s = ShardProvider.of<_CounterShard>(context, listen: false);
-            return Text('${s.state}', textDirection: TextDirection.ltr);
-          }),
+          child: Builder(
+            builder: (context) {
+              buildCount++;
+              final s = ShardProvider.of<_CounterShard>(context, listen: false);
+              return Text('${s.state}', textDirection: TextDirection.ltr);
+            },
+          ),
         ),
       ),
     );
@@ -129,14 +140,16 @@ void main() {
     Object? captured;
     await tester.pumpWidget(
       MaterialApp(
-        home: Builder(builder: (context) {
-          try {
-            ShardProvider.of<_LifecycleShard>(context);
-          } catch (e) {
-            captured = e;
-          }
-          return const SizedBox();
-        }),
+        home: Builder(
+          builder: (context) {
+            try {
+              ShardProvider.of<_LifecycleShard>(context);
+            } catch (e) {
+              captured = e;
+            }
+            return const SizedBox();
+          },
+        ),
       ),
     );
     expect(captured, isA<AssertionError>());

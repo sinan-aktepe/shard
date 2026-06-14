@@ -14,10 +14,12 @@ void main() {
       MaterialApp(
         home: ShardProvider<_Counter>(
           create: () => _Counter(),
-          child: Builder(builder: (context) {
-            captured = context.read<_Counter>();
-            return const SizedBox();
-          }),
+          child: Builder(
+            builder: (context) {
+              captured = context.read<_Counter>();
+              return const SizedBox();
+            },
+          ),
         ),
       ),
     );
@@ -32,11 +34,13 @@ void main() {
       MaterialApp(
         home: ShardProvider<_Counter>(
           create: () => _Counter(),
-          child: Builder(builder: (context) {
-            builds++;
-            shard = context.read<_Counter>();
-            return const SizedBox();
-          }),
+          child: Builder(
+            builder: (context) {
+              builds++;
+              shard = context.read<_Counter>();
+              return const SizedBox();
+            },
+          ),
         ),
       ),
     );

@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shard/shard.dart';
 
 class _ApiClient {}
+
 class _Repo {
   _Repo(this.api);
   final _ApiClient api;
