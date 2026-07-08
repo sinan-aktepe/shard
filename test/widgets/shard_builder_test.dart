@@ -7,6 +7,11 @@ class _Counter extends Shard<int> {
   void inc() => emit(state + 1);
 }
 
+class _NullableShard extends Shard<int?> {
+  _NullableShard() : super(null);
+  void setTo(int? v) => emit(v);
+}
+
 void main() {
   testWidgets('rebuilds on every state change', (tester) async {
     final shard = _Counter();
@@ -116,6 +121,100 @@ void main() {
     await tester.pump();
     expect(find.text('3'), findsOneWidget);
   });
+
+  testWidgets('rebinds when the provider above swaps the shard instance', (
+    tester,
+  ) async {
+    final a = _Counter()..inc(); // 1
+    final b = _Counter()
+      ..inc()
+      ..inc(); // 2
+    addTearDown(a.dispose);
+    addTearDown(b.dispose);
+
+    late StateSetter setOuter;
+    var useA = true;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: StatefulBuilder(
+          builder: (context, setState) {
+            setOuter = setState;
+            return ShardProvider<_Counter>.value(
+              value: useA ? a : b,
+              child: ShardBuilder<_Counter, int>(
+                builder: (context, count) =>
+                    Text('$count', textDirection: TextDirection.ltr),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+    expect(find.text('1'), findsOneWidget);
+
+    setOuter(() => useA = false);
+    await tester.pump();
+    expect(find.text('2'), findsOneWidget);
+
+    // The old shard must no longer drive rebuilds.
+    a.inc();
+    await tester.pump();
+    expect(find.text('2'), findsOneWidget);
+
+    // The new shard must.
+    b.inc();
+    await tester.pump();
+    expect(find.text('3'), findsOneWidget);
+  });
+
+  testWidgets('listener fires when previous state is null (nullable state)', (
+    tester,
+  ) async {
+    final shard = _NullableShard();
+    addTearDown(shard.dispose);
+    final events = <(int?, int?)>[];
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ShardBuilder<_NullableShard, int?>(
+          shard: shard,
+          listener: (prev, curr) => events.add((prev, curr)),
+          builder: (context, _) => const SizedBox(),
+        ),
+      ),
+    );
+
+    shard.setTo(1); // null -> 1
+    await tester.pump();
+    shard.setTo(null); // 1 -> null
+    await tester.pump();
+    expect(events, [(null, 1), (1, null)]);
+  });
+
+  testWidgets(
+    'buildWhen is consulted when previous state is null (nullable state)',
+    (tester) async {
+      final shard = _NullableShard();
+      addTearDown(shard.dispose);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: ShardBuilder<_NullableShard, int?>(
+            shard: shard,
+            buildWhen: (prev, curr) => curr != null,
+            builder: (context, v) => Text(
+              v == null ? 'none' : '$v',
+              textDirection: TextDirection.ltr,
+            ),
+          ),
+        ),
+      );
+      expect(find.text('none'), findsOneWidget);
+
+      shard.setTo(5); // null -> 5: buildWhen(null, 5) is true, must rebuild
+      await tester.pump();
+      expect(find.text('5'), findsOneWidget);
+    },
+  );
 
   testWidgets('listenWhen filters listener calls', (tester) async {
     final shard = _Counter();

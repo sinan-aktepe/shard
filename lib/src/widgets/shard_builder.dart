@@ -152,9 +152,13 @@ class _ShardBuilderState<T extends Shard<S>, S>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Get shard from context if not provided directly
-    if (_shard == null) {
-      _initializeShard(ShardProvider.of<T>(context));
+    // When the shard comes from context, bind on first build and rebind if
+    // the provider above starts supplying a different instance.
+    if (widget.shard != null) return;
+    final provided = ShardProvider.of<T>(context);
+    if (!identical(provided, _shard)) {
+      _shard?.removeListener(_onStateChanged);
+      _initializeShard(provided);
     }
   }
 
@@ -178,25 +182,22 @@ class _ShardBuilderState<T extends Shard<S>, S>
   void _onStateChanged() {
     if (_shard == null || !mounted) return;
 
-    // Extract new state from Shard
+    // _previousState is always assigned in _initializeShard before the
+    // listener is attached, so the cast is safe even when S is nullable
+    // (a null previous state is a legitimate value, not "uninitialized").
+    final S previousState = _previousState as S;
     final S newState = _shard!.state;
 
-    // Check if we should listen (call onStateChanged)
     final shouldListen =
         widget.listenWhen == null ||
-        (_previousState != null &&
-            widget.listenWhen!(_previousState as S, newState));
+        widget.listenWhen!(previousState, newState);
 
-    // Call onStateChanged callback if provided, we have a previous state, and shouldListen is true
-    if (widget.listener != null && _previousState != null && shouldListen) {
-      widget.listener!(_previousState as S, newState);
+    if (widget.listener != null && shouldListen) {
+      widget.listener!(previousState, newState);
     }
 
-    // Check if we should rebuild
     final shouldBuild =
-        widget.buildWhen == null ||
-        (_previousState != null &&
-            widget.buildWhen!(_previousState as S, newState));
+        widget.buildWhen == null || widget.buildWhen!(previousState, newState);
 
     // Update previous state for next change
     _previousState = newState;

@@ -226,4 +226,51 @@ void main() {
     await tester.expectStates([AsyncData<int>(123)]);
     expect(shard.buildCount, 0);
   });
+
+  test(
+    'refresh: slow cache delete cannot wipe the freshly written entry',
+    () async {
+      final cache = _SlowDeleteCache();
+      final shard = _OkShard(fake: cache, cacheKeyOverride: 'k');
+      final tester = ShardTester(shard);
+      addTearDown(tester.dispose);
+      addTearDown(shard.dispose);
+
+      shard.onInit();
+      await tester.waitFor((s) => s is AsyncData<int>);
+      expect(cache.hasKey('k'), isTrue);
+
+      // The delete triggered by refresh is gated: it stays pending until the
+      // test releases it. The fresh fetch result must be written strictly
+      // after the delete completes — otherwise the late delete erases it.
+      shard.refresh();
+      await pumpEventQueue();
+      expect(cache.deleteCalls, 1);
+
+      cache.deleteGate.complete();
+      await tester.waitFor((s) => s is AsyncData<int>);
+      await pumpEventQueue();
+
+      expect(
+        cache.hasKey('k'),
+        isTrue,
+        reason: 'the fresh cache entry must survive the invalidation delete',
+      );
+      expect(shard.state, isA<AsyncData<int>>());
+    },
+  );
+}
+
+/// A cache whose [delete] blocks until [deleteGate] is completed, simulating
+/// a slow async cache backend.
+class _SlowDeleteCache extends FakeCacheService {
+  final Completer<void> deleteGate = Completer<void>();
+  int deleteCalls = 0;
+
+  @override
+  Future<void> delete(String key) async {
+    deleteCalls++;
+    await deleteGate.future;
+    await super.delete(key);
+  }
 }

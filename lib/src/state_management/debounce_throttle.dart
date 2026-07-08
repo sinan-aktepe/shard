@@ -123,6 +123,9 @@ class _ThrottleTimer {
 
   _ThrottleTimer(this.duration);
 
+  /// Whether an execution window is currently active.
+  bool get isThrottled => _isThrottled;
+
   bool call(VoidCallback callback) {
     if (!_isThrottled) {
       // First call executes immediately (leading throttle)
@@ -191,7 +194,10 @@ mixin ThrottleMixin {
   ///
   /// - [key] - Unique identifier for this throttle operation
   /// - [callback] - Function to execute
-  /// - [duration] - Minimum time between executions (default: 300ms)
+  /// - [duration] - Minimum time between executions (default: 300ms).
+  ///   Passing a different duration for an existing [key] takes effect the
+  ///   next time the key is idle; an active window keeps its original
+  ///   duration.
   ///
   /// ```dart
   /// final executed = throttle('loadMore', () {
@@ -208,13 +214,19 @@ mixin ThrottleMixin {
     VoidCallback callback, {
     Duration duration = const Duration(milliseconds: 300),
   }) {
-    // Get or create throttle timer for this key
-    if (!_throttleTimers.containsKey(key)) {
-      _throttleTimers[key] = _ThrottleTimer(duration);
+    // Get or create the throttle timer for this key. When the key is idle
+    // (not inside an active window) and a different duration is requested,
+    // recreate the timer so the new duration takes effect instead of being
+    // silently ignored. An active window keeps its original duration.
+    var timer = _throttleTimers[key];
+    if (timer == null || (!timer.isThrottled && timer.duration != duration)) {
+      timer?.cancel();
+      timer = _ThrottleTimer(duration);
+      _throttleTimers[key] = timer;
     }
 
     // Call and return whether it was executed
-    return _throttleTimers[key]!.call(callback);
+    return timer.call(callback);
   }
 
   /// Cancels a specific throttle operation by [key].

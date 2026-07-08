@@ -1,6 +1,21 @@
+## 2.0.0-dev.2
+
+Bug-fix development release. No API changes; one behavior of `ShardProvider.value` is corrected to match its documentation.
+
+### Fixes
+
+* **Fix**: `ShardProvider.value` now follows the provided instance across rebuilds. Previously the provider pinned whatever instance the *first* build supplied and silently ignored a new `value:`, so descendants (including `context.read` and context-bound `ShardBuilder`/`ShardSelector`/`ShardListener`) kept reading the stale shard. Swapping the value now rebinds dependents; switching between the `create` and `value` constructors across rebuilds now asserts in debug builds.
+* **Fix**: `ShardBuilder`, `ShardSelector`, and `ShardListener` obtained via context now rebind their listener when the provider above starts supplying a different shard instance, instead of staying attached to the old one.
+* **Fix**: `ShardBuilder`/`ShardListener` with a nullable state type (`Shard<T?>`) no longer suppress callbacks when the previous state is `null`. Previously a `null → value` transition never invoked `listener`, and a provided `buildWhen`/`listenWhen` was skipped entirely (with `buildWhen` set, the widget did not even rebuild).
+* **Fix**: `ShardSelector` now recomputes the selected value when a rebuild supplies a changed `selector` (e.g. a closure capturing a variable that changed). Previously the old selected value was shown until the next state emission.
+* **Fix**: `FutureShard.refresh` no longer races its cache invalidation against the fetch. The delete was fire-and-forget, so a slow async cache backend could complete the delete *after* the fresh result was written, wiping the new entry; the delete is now awaited before fetching. A synchronously-throwing `CacheService.delete` no longer escapes to the `refresh` caller either.
+* **Fix**: `StatePersistenceMixin` now auto-saves on `setStateInternal`, so states restored by `HistoryMixin`'s `undo`/`redo` are persisted. Previously only `emit`/`emitForce` triggered auto-save, leaving storage stale after an undo until the next emit (a `flushOnPause` or process kill in that window persisted the wrong state).
+* **Fix**: `throttle` no longer silently ignores a changed `duration` for an existing key. The new duration now takes effect the next time the key is idle; an active window keeps its original duration.
+* **Docs**: `ShardProvider.of` claimed `listen: true` rebuilds the widget on state emissions — it never did (by design; rebuilds are `ShardBuilder`/`ShardSelector`'s job). The doc now describes the real semantics: with `listen: true` the widget rebuilds only when the provided instance itself is replaced.
+
 ## 2.0.0-dev.1
 
-First 2.x development release. Three breaking changes (all with a clear migration path — see [docs/superpowers/specs/2026-06-13-shard-2.0-migration.md](docs/superpowers/specs/2026-06-13-shard-2.0-migration.md)) plus a wave of additive features and fixes. The "zero runtime dependencies" guarantee is unchanged.
+First 2.x development release. Three breaking changes plus a wave of additive features and fixes. The "zero runtime dependencies" guarantee is unchanged.
 
 ### Breaking changes
 

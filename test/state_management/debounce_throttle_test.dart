@@ -141,6 +141,27 @@ void main() {
       });
     });
 
+    test('a new duration takes effect once the previous window ends', () {
+      fakeAsync((async) {
+        final s = _ThrottleShard();
+        // Open a 100ms window.
+        expect(s.run('k', duration: const Duration(milliseconds: 100)), isTrue);
+        async.elapse(const Duration(milliseconds: 150)); // window over
+
+        // Re-throttle with a longer 500ms window.
+        expect(s.run('k', duration: const Duration(milliseconds: 500)), isTrue);
+        async.elapse(const Duration(milliseconds: 200));
+
+        // 200ms in: still inside the new 500ms window, must be throttled.
+        expect(
+          s.run('k', duration: const Duration(milliseconds: 500)),
+          isFalse,
+        );
+        expect(s.callCount, 2);
+        s.dispose();
+      });
+    });
+
     test('different keys are independent', () {
       fakeAsync((async) {
         final s = _ThrottleShard();

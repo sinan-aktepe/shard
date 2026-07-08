@@ -1,6 +1,6 @@
 name: shard
 description: "A powerful, lightweight state management solution for Flutter with built-in persistence, debounce, throttle, and seamless widget integration."
-version: 2.0.0-dev.1
+version: 2.0.0-dev.2
 homepage: https://shard-68cbe.web.app
 issue_tracker: https://github.com/sinan-aktepe/shard/issues
 documentation: https://shard-68cbe.web.app/en/getting-started/quick-start

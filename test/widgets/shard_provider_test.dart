@@ -136,6 +136,49 @@ void main() {
     shard.dispose();
   });
 
+  testWidgets('value constructor: swapping the value rebinds descendants', (
+    tester,
+  ) async {
+    final a = _CounterShard()..inc(); // state == 1
+    final b = _CounterShard()
+      ..inc()
+      ..inc(); // state == 2
+
+    late StateSetter setOuter;
+    var useA = true;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: StatefulBuilder(
+          builder: (context, setState) {
+            setOuter = setState;
+            return ShardProvider<_CounterShard>.value(
+              value: useA ? a : b,
+              child: Builder(
+                builder: (context) {
+                  final s = ShardProvider.of<_CounterShard>(context);
+                  return Text('${s.state}', textDirection: TextDirection.ltr);
+                },
+              ),
+            );
+          },
+        ),
+      ),
+    );
+    expect(find.text('1'), findsOneWidget);
+
+    setOuter(() => useA = false);
+    await tester.pump();
+    expect(find.text('2'), findsOneWidget);
+
+    // context.read must also resolve to the new instance.
+    final ctx = tester.element(find.text('2'));
+    expect(identical(ctx.read<_CounterShard>(), b), isTrue);
+
+    a.dispose();
+    b.dispose();
+  });
+
   testWidgets('of() throws when no provider above', (tester) async {
     Object? captured;
     await tester.pumpWidget(

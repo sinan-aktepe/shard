@@ -177,10 +177,6 @@ abstract class FutureShard<T> extends Shard<AsyncValue<T>> {
     _isRefreshing = true;
     _forceRefresh = invalidateCache;
 
-    if (invalidateCache && allowCache) {
-      cacheService.delete(cacheKey).catchError((_) {});
-    }
-
     emit(AsyncLoading<T>(previousData: state.dataOrNull));
     _fetch();
   }
@@ -199,6 +195,17 @@ abstract class FutureShard<T> extends Shard<AsyncValue<T>> {
   }
 
   Future<void> _fetch() async {
+    // Invalidate the cache before fetching, awaited: a fire-and-forget delete
+    // could complete after the fresh result is written below and wipe it.
+    if (allowCache && _forceRefresh) {
+      try {
+        await cacheService.delete(cacheKey);
+      } catch (e) {
+        // Cache delete failed; continue with the fetch.
+      }
+      if (isDisposed) return;
+    }
+
     // Try to load from cache if enabled and not forcing refresh
     if (allowCache && !_forceRefresh) {
       try {

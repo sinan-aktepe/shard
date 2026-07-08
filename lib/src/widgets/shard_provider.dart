@@ -37,8 +37,12 @@ class _ShardProvider<T extends Shard<dynamic>> extends InheritedWidget {
     }
   }
 
+  // Notify dependents only when the provided instance itself is replaced
+  // (e.g. a new `value:` passed to ShardProvider.value). State emissions never
+  // rebuild dependents — that is ShardBuilder/ShardSelector's job.
   @override
-  bool updateShouldNotify(_ShardProvider<T> oldWidget) => false;
+  bool updateShouldNotify(_ShardProvider<T> oldWidget) =>
+      !identical(shard, oldWidget.shard);
 }
 
 /// A widget that provides a [Shard] instance to its descendants.
@@ -152,6 +156,11 @@ class ShardProvider<T extends Shard<dynamic>> extends StatefulWidget
   /// disposed when this widget is disposed. You are responsible for
   /// managing the shard's lifecycle.
   ///
+  /// If a rebuild supplies a different [value] instance, descendants are
+  /// rebound to it: dependent widgets (including [ShardBuilder],
+  /// [ShardSelector], and [ShardListener] obtained via context) switch to the
+  /// new instance.
+  ///
   /// ```dart
   /// final myShard = CounterShard();
   ///
@@ -168,16 +177,23 @@ class ShardProvider<T extends Shard<dynamic>> extends StatefulWidget
 
   /// Obtains the nearest [ShardProvider] ancestor of the given context.
   ///
-  /// If [listen] is true (default), the widget will rebuild when the shard
-  /// notifies its listeners. If false, the widget will not rebuild.
+  /// This is an accessor, not a state subscription: state emissions never
+  /// rebuild the calling widget. Use [ShardBuilder] or [ShardSelector] to
+  /// rebuild on state changes.
+  ///
+  /// If [listen] is true (default), the calling widget registers a dependency
+  /// on the provider and rebuilds only when the provided *instance* is
+  /// replaced (e.g. a new `value:` is passed to [ShardProvider.value]). If
+  /// false, no dependency is registered at all — this is what `context.read`
+  /// uses and is the right choice inside callbacks and `initState`.
   ///
   /// Throws an assertion error if no [ShardProvider] of type [T] is found.
   ///
   /// ```dart
-  /// // Get shard and listen for changes
+  /// // Get shard, following provider instance swaps
   /// final shard = ShardProvider.of<CounterShard>(context);
   ///
-  /// // Get shard without listening (for callbacks)
+  /// // Get shard without any dependency (for callbacks)
   /// final shard = ShardProvider.of<CounterShard>(context, listen: false);
   /// ```
   static T of<T extends Shard<dynamic>>(
@@ -201,7 +217,7 @@ class ShardProvider<T extends Shard<dynamic>> extends StatefulWidget
 
 class _ShardProviderState<T extends Shard<dynamic>>
     extends State<ShardProvider<T>> {
-  late final T _shard;
+  late T _shard;
   late final bool _shouldDispose;
 
   @override
@@ -219,6 +235,23 @@ class _ShardProviderState<T extends Shard<dynamic>>
       _shard.onInit();
     } else {
       throw ArgumentError('Either create or value must be provided');
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant ShardProvider<T> oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    assert(
+      (widget.value == null) == (oldWidget.value == null),
+      'ShardProvider<$T> cannot switch between the create and value '
+      'constructors across rebuilds.',
+    );
+    // For the value constructor, follow the instance supplied by the caller.
+    // The old instance is caller-owned, so nothing is disposed here;
+    // updateShouldNotify picks up the change and rebuilds dependents.
+    final newValue = widget.value;
+    if (newValue != null && !identical(newValue, _shard)) {
+      _shard = newValue;
     }
   }
 

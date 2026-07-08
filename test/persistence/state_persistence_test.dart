@@ -10,6 +10,12 @@ class _MyShard extends Shard<int> with StatePersistenceMixin<int, int> {
   void setTo(int v) => emit(v);
 }
 
+class _HistoryPersistShard extends Shard<int>
+    with StatePersistenceMixin<int, int>, HistoryMixin<int> {
+  _HistoryPersistShard() : super(0);
+  void setTo(int v) => emit(v);
+}
+
 String? _envPayload(String? raw) =>
     raw == null ? null : (jsonDecode(raw) as Map)['__shard_p'] as String?;
 int? _envVersion(String? raw) =>
@@ -56,6 +62,37 @@ void main() {
       expect(called, isTrue);
       expect(loaded, isNull);
       shard.dispose();
+    });
+  });
+
+  test('undo/redo (setStateInternal) triggers debounced auto-save', () {
+    fakeAsync((async) {
+      final storage = FakeStateStorage();
+      final shard = _HistoryPersistShard();
+      shard.enablePersistence(
+        key: 'k',
+        storage: storage,
+        serializer: const IntSerializer(),
+        toPersistence: (s) => s,
+        debounceDuration: const Duration(milliseconds: 50),
+      );
+
+      shard.setTo(1);
+      async.elapse(const Duration(milliseconds: 100));
+      expect(_envPayload(storage.rawValue('k')), '1');
+
+      // undo() restores via setStateInternal — the restored state must be
+      // persisted too, not only states that went through emit.
+      shard.undo();
+      async.elapse(const Duration(milliseconds: 100));
+      expect(_envPayload(storage.rawValue('k')), '0');
+
+      shard.redo();
+      async.elapse(const Duration(milliseconds: 100));
+      expect(_envPayload(storage.rawValue('k')), '1');
+
+      shard.dispose();
+      async.flushMicrotasks();
     });
   });
 

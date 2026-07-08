@@ -50,6 +50,39 @@ void main() {
     expect(find.text('Bob'), findsOneWidget);
   });
 
+  testWidgets('recomputes when the selector changes on rebuild', (
+    tester,
+  ) async {
+    final shard = _PersonShard(); // Alice, 30
+    addTearDown(shard.dispose);
+
+    late StateSetter setOuter;
+    var selectName = true;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: StatefulBuilder(
+          builder: (context, setState) {
+            setOuter = setState;
+            return ShardSelector<_PersonShard, _Person, String>(
+              shard: shard,
+              selector: (p) => selectName ? p.name : '${p.age}',
+              builder: (_, value) =>
+                  Text(value, textDirection: TextDirection.ltr),
+            );
+          },
+        ),
+      ),
+    );
+    expect(find.text('Alice'), findsOneWidget);
+
+    // Same shard, new selector closure: the shown value must reflect the
+    // new selector without waiting for the next emit.
+    setOuter(() => selectName = false);
+    await tester.pump();
+    expect(find.text('30'), findsOneWidget);
+  });
+
   testWidgets('swapping the shard prop rebinds the selector', (tester) async {
     final a = _PersonShard(); // Alice
     final b = _PersonShard()..rename('Bob');

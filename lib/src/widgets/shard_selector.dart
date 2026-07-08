@@ -138,9 +138,13 @@ class _ShardSelectorState<T extends Shard<S>, S, R>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Get shard from context if not provided directly
-    if (_shard == null) {
-      _initializeShard(ShardProvider.of<T>(context));
+    // When the shard comes from context, bind on first build and rebind if
+    // the provider above starts supplying a different instance.
+    if (widget.shard != null) return;
+    final provided = ShardProvider.of<T>(context);
+    if (!identical(provided, _shard)) {
+      _shard?.removeListener(_onStateChanged);
+      _initializeShard(provided);
     }
   }
 
@@ -153,6 +157,11 @@ class _ShardSelectorState<T extends Shard<S>, S, R>
       _shard = null;
       _initialized = false;
       _initializeShard(widget.shard ?? ShardProvider.of<T>(context));
+    } else if (_shard != null) {
+      // The selector may be a new closure with different logic (e.g. it
+      // captured a variable that changed); recompute so this rebuild shows
+      // the value of the new selector instead of a stale one.
+      _value = widget.selector(_shard!.state);
     }
   }
 

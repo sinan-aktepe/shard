@@ -176,6 +176,15 @@ mixin StatePersistenceMixin<T, K> on Shard<T> {
     _triggerAutoSaveIfEnabled();
   }
 
+  @override
+  void setStateInternal(T newState) {
+    super.setStateInternal(newState);
+
+    // Restores that bypass emit (e.g. HistoryMixin's undo/redo) must be
+    // persisted too, or storage silently keeps the pre-restore state.
+    _triggerAutoSaveIfEnabled();
+  }
+
   /// Enables persistence with the given configuration.
   ///
   /// This method must be called to start persisting state. It configures

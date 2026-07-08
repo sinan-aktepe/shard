@@ -112,8 +112,13 @@ class _ShardListenerState<T extends Shard<S>, S>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (_shard == null) {
-      _initializeShard(ShardProvider.of<T>(context));
+    // When the shard comes from context, bind on first build and rebind if
+    // the provider above starts supplying a different instance.
+    if (widget.shard != null) return;
+    final provided = ShardProvider.of<T>(context);
+    if (!identical(provided, _shard)) {
+      _shard?.removeListener(_onStateChanged);
+      _initializeShard(provided);
     }
   }
 
@@ -136,15 +141,19 @@ class _ShardListenerState<T extends Shard<S>, S>
 
   void _onStateChanged() {
     if (_shard == null || !mounted) return;
+
+    // _previousState is always assigned in _initializeShard before the
+    // listener is attached, so the cast is safe even when S is nullable
+    // (a null previous state is a legitimate value, not "uninitialized").
+    final S previousState = _previousState as S;
     final S newState = _shard!.state;
 
     final shouldListen =
         widget.listenWhen == null ||
-        (_previousState != null &&
-            widget.listenWhen!(_previousState as S, newState));
+        widget.listenWhen!(previousState, newState);
 
-    if (_previousState != null && shouldListen) {
-      widget.listener(context, _previousState as S, newState);
+    if (shouldListen) {
+      widget.listener(context, previousState, newState);
     }
 
     _previousState = newState;

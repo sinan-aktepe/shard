@@ -7,7 +7,34 @@ class _Counter extends Shard<int> {
   void inc() => emit(state + 1);
 }
 
+class _NullableShard extends Shard<int?> {
+  _NullableShard() : super(null);
+  void setTo(int? v) => emit(v);
+}
+
 void main() {
+  testWidgets('listener fires when previous state is null (nullable state)', (
+    tester,
+  ) async {
+    final shard = _NullableShard();
+    addTearDown(shard.dispose);
+    final calls = <(int?, int?)>[];
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ShardListener<_NullableShard, int?>(
+          shard: shard,
+          listener: (context, prev, curr) => calls.add((prev, curr)),
+          child: const SizedBox(),
+        ),
+      ),
+    );
+
+    shard.setTo(1); // null -> 1
+    await tester.pump();
+    expect(calls, [(null, 1)]);
+  });
+
   testWidgets('listener fires with (prev, curr) and does not rebuild child', (
     tester,
   ) async {
